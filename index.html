@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Squadre in Servizio</title>
+<meta name="theme-color" content="#b5121b">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Squadre">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{
+  --red:#b5121b; --red-d:#8e0e15; --bg:#f3f4f6; --card:#fff; --ink:#1f2328; --mut:#6b7280;
+  --line:#e5e7eb; --ok:#15803d; --warn:#b45309; --rad:12px;
+  --safe-t:env(safe-area-inset-top,0px); --safe-b:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--ink);font-size:16px;-webkit-tap-highlight-color:transparent}
+button,input,select,textarea{font:inherit;color:inherit}
+header{background:var(--red);color:#fff;padding:calc(10px + var(--safe-t)) 14px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:1000}
+header h1{font-size:18px;margin:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+header .back{background:rgba(255,255,255,.15);border:0;color:#fff;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:15px}
+.offline-badge{font-size:12px;background:#fff;color:var(--red);border-radius:20px;padding:2px 8px;font-weight:600;display:none}
+body.is-offline .offline-badge{display:inline-block}
+main{padding:14px;padding-bottom:calc(84px + var(--safe-b));max-width:1000px;margin:0 auto}
+nav.tabs{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--line);display:flex;z-index:1000;padding-bottom:var(--safe-b)}
+nav.tabs button{flex:1;border:0;background:none;padding:10px 4px 8px;font-size:12px;color:var(--mut);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+nav.tabs button .ic{font-size:21px;line-height:1}
+nav.tabs button.on{color:var(--red);font-weight:600}
+.card{background:var(--card);border-radius:var(--rad);padding:14px;margin-bottom:12px;box-shadow:0 1px 2px rgba(0,0,0,.06)}
+.row{display:flex;gap:10px;align-items:center}
+.grow{flex:1;min-width:0}
+.mut{color:var(--mut);font-size:14px}
+.small{font-size:13px}
+h2{font-size:17px;margin:4px 0 12px}
+h3{font-size:15px;margin:14px 0 8px}
+.btn{border:0;border-radius:10px;padding:10px 14px;background:var(--red);color:#fff;cursor:pointer;font-weight:600;font-size:15px}
+.btn:active{background:var(--red-d)}
+.btn.sec{background:#fff;color:var(--ink);border:1px solid var(--line)}
+.btn.ghost{background:none;color:var(--red);padding:8px 10px}
+.btn.sm{padding:6px 10px;font-size:14px}
+.btn.full{width:100%}
+.ib{border:0;background:#f3f4f6;border-radius:8px;width:36px;height:36px;cursor:pointer;font-size:16px;flex:none}
+.ib:active{background:#e5e7eb}
+.list-item{display:flex;gap:10px;align-items:center;padding:10px 0;border-bottom:1px solid var(--line)}
+.list-item:last-child{border-bottom:0}
+.title{font-weight:600}
+.tag{display:inline-block;font-size:12px;border-radius:20px;padding:2px 8px;background:#f3f4f6;color:var(--mut);margin-right:4px}
+.tag.warn{background:#fef3c7;color:var(--warn)}
+.dot{width:14px;height:14px;border-radius:50%;flex:none;display:inline-block}
+.empty{text-align:center;color:var(--mut);padding:24px 10px}
+.search{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;margin-bottom:10px}
+label.f{display:block;margin-bottom:10px;font-size:14px;color:var(--mut)}
+label.f input,label.f select,label.f textarea{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font-size:16px;color:var(--ink)}
+label.f textarea{min-height:60px;resize:vertical}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.seg{display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;margin-top:4px}
+.seg label{flex:1;text-align:center;padding:10px 6px;cursor:pointer;color:var(--ink);font-size:15px}
+.seg input{display:none}
+.seg label:has(input:checked){background:var(--red);color:#fff}
+/* dialog */
+.ovl{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:3000;display:flex;align-items:flex-end;justify-content:center}
+.dlg{background:#fff;width:100%;max-width:520px;max-height:92vh;overflow:auto;border-radius:16px 16px 0 0;padding:18px 16px calc(16px + var(--safe-b))}
+@media(min-width:700px){.ovl{align-items:center}.dlg{border-radius:16px}}
+.dlg h2{margin-top:0}
+.dlg .acts{display:flex;gap:10px;justify-content:flex-end;margin-top:14px;flex-wrap:wrap}
+.toast{position:fixed;left:50%;bottom:calc(90px + var(--safe-b));transform:translateX(-50%);background:#111;color:#fff;padding:10px 16px;border-radius:10px;z-index:4000;font-size:14px;max-width:90vw;text-align:center}
+/* servizio */
+body.in-svc main{max-width:none;padding:0;padding-bottom:0}
+body.in-svc nav.tabs{display:none}
+.svc{display:flex;flex-direction:column;height:calc(100vh - 52px - var(--safe-t));height:calc(100dvh - 52px - var(--safe-t))}
+.mapwrap{position:relative;flex:none;height:50%;min-height:260px;background:#dfe3e8}
+#map{position:absolute;inset:0}
+.panel{flex:1;overflow:auto;background:var(--bg);padding:0 0 calc(16px + var(--safe-b))}
+.ptabs{display:flex;background:#fff;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+.ptabs button{flex:1;border:0;background:none;padding:12px 4px;cursor:pointer;font-size:15px;color:var(--mut);border-bottom:3px solid transparent}
+.ptabs button.on{color:var(--red);border-color:var(--red);font-weight:600}
+.pbody{padding:12px}
+@media(min-width:900px){
+  .svc{flex-direction:row-reverse}
+  .mapwrap{height:auto;flex:1}
+  .panel{flex:none;width:400px;border-right:1px solid var(--line)}
+}
+.placing-bar{position:absolute;top:10px;left:50%;transform:translateX(-50%);z-index:900;background:#111;color:#fff;border-radius:10px;padding:8px 12px;font-size:14px;display:flex;gap:10px;align-items:center;max-width:94%}
+.placing-bar button{background:#fff;color:#111;border:0;border-radius:8px;padding:4px 10px;cursor:pointer}
+.map-tools{position:absolute;right:10px;bottom:24px;z-index:800;display:flex;flex-direction:column;gap:6px}
+.map-tools button{background:#fff;border:0;border-radius:10px;box-shadow:0 1px 4px rgba(0,0,0,.3);padding:8px 10px;cursor:pointer;font-size:14px}
+@media(max-width:600px){.map-tools button span{display:none}.map-tools button{width:42px;height:42px;font-size:18px;padding:0}}
+.map-search{position:absolute;left:54px;right:10px;top:10px;z-index:800;display:flex;gap:6px;max-width:420px}
+.map-search input{flex:1;min-width:0;padding:9px 12px;border-radius:10px;border:0;box-shadow:0 1px 4px rgba(0,0,0,.3);font-size:16px}
+.map-search button{border:0;border-radius:10px;background:var(--red);color:#fff;padding:0 12px;cursor:pointer}
+.nomap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--mut)}
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 2px}
+.legend span{display:flex;align-items:center;gap:5px;font-size:13px}
+/* marker */
+.pin{width:34px;height:34px;border-radius:50%;border:3px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.45);color:#fff;font-weight:700;font-size:13px;display:flex;align-items:center;justify-content:center;letter-spacing:.5px}
+.pin-lbl{position:absolute;top:36px;left:50%;transform:translateX(-50%);background:rgba(255,255,255,.95);border-radius:6px;padding:1px 6px;font-size:11px;font-weight:600;white-space:nowrap;box-shadow:0 1px 2px rgba(0,0,0,.25);color:#111;line-height:1.35;text-align:center}
+.pin-lbl i{font-style:normal;font-weight:400;color:#555;display:block;font-size:10px}
+body.hide-labels .pin-lbl{display:none}
+.leaflet-div-icon.vpin{background:none;border:0}
+.ppt{position:absolute;left:-6px;top:-6px;width:12px;height:12px;border-radius:50%;background:#111;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.5)}
+.pgrp{position:absolute;left:0;bottom:10px;transform:translateX(-50%);background:#fff;border:2px solid #111;border-radius:10px;padding:3px 7px 4px;text-align:center;white-space:nowrap;box-shadow:0 2px 6px rgba(0,0,0,.35);color:#111;cursor:pointer}
+.pgrp:after{content:"";position:absolute;left:50%;bottom:-8px;margin-left:-6px;border:6px solid transparent;border-top-color:#111;border-bottom:0}
+.pgrp-n{font-weight:700;font-size:12px}
+.pgrp-v{display:flex;gap:3px;justify-content:center;margin-top:3px;flex-wrap:wrap;max-width:190px}
+.pgrp-l{font-size:10.5px;line-height:1.3;margin-top:3px;color:#333}
+.pgrp-e{font-size:10px;color:#888}
+body.hide-labels .pgrp-l{display:none}
+.mini{width:22px;height:22px;border-radius:50%;color:#fff;font-size:10px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;border:2px solid #fff;box-shadow:0 0 0 1px rgba(0,0,0,.25);-webkit-print-color-adjust:exact;print-color-adjust:exact}
+.pop b{font-size:15px}
+.pop div{margin:2px 0}
+.squad-h{display:flex;align-items:center;gap:8px;font-weight:600;margin:14px 0 4px;font-size:14px}
+.squad-h:first-child{margin-top:0}
+/* print */
+#printHead,#printTable{display:none}
+body.printing .svc{height:auto;display:block}
+body.printing .mapwrap{height:15cm;width:100%;max-width:19cm}
+@media print{
+  @page{size:A4;margin:12mm}
+  body{background:#fff}
+  header,nav.tabs,.panel,.map-tools,.map-search,.placing-bar,.leaflet-control-zoom,.leaflet-control-layers{display:none!important}
+  main{padding:0!important}
+  #printHead,#printTable{display:block!important}
+  .svc{height:auto!important;display:block!important}
+  .mapwrap{height:15cm!important;width:19cm!important;border:1px solid #999;break-inside:avoid}
+  .pin,.ppt{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .dot{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  table{width:100%;border-collapse:collapse;font-size:11px;margin-top:8px}
+  th,td{border:1px solid #bbb;padding:4px 6px;text-align:left;vertical-align:top}
+  th{background:#eee;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .ptsq td{background:#f6f6f6;font-weight:700;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+#printHead h1{font-size:18px;margin:0 0 2px}
+#printHead p{margin:0 0 8px;font-size:12px}
+/* ===== v2 ===== */
+.ptabs{overflow-x:auto;scrollbar-width:none}
+.ptabs::-webkit-scrollbar{display:none}
+.ptabs button{flex:none;padding:12px 13px;white-space:nowrap}
+.ptabs .bdg{display:inline-block;background:var(--warn);color:#fff;border-radius:10px;font-size:11px;padding:0 6px;margin-left:4px;font-weight:700}
+.pin{position:relative}
+.pin.st-pausa,.mini.st-pausa{box-shadow:0 0 0 3px #facc15,0 1px 4px rgba(0,0,0,.4)}
+.pin.st-interv,.mini.st-interv{box-shadow:0 0 0 3px #ef4444,0 1px 4px rgba(0,0,0,.4);animation:pul 1.2s infinite}
+.pin.st-rientrato,.mini.st-rientrato{opacity:.35;filter:grayscale(1)}
+@keyframes pul{50%{box-shadow:0 0 0 7px rgba(239,68,68,.25),0 1px 4px rgba(0,0,0,.4)}}
+.pin[data-b]:after{content:attr(data-b);position:absolute;top:-9px;right:-11px;font-size:14px}
+.pgrp.mz{border-color:#1d4ed8}
+.pgrp.mz:after{border-top-color:#1d4ed8}
+.pt{width:34px;height:34px;border-radius:50%;background:#fff;border:2px solid #111;font-size:18px;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,.4)}
+.iv{width:28px;height:28px;transform:rotate(45deg);background:#f97316;border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;margin:3px}
+.iv span{transform:rotate(-45deg);color:#fff;font-weight:800;font-size:13px}
+.iv.chiuso{background:#9ca3af}
+.chip{border:0;border-radius:20px;padding:4px 9px;font-size:13px;cursor:pointer;background:#f3f4f6;flex:none}
+.chip.st-post{background:#dcfce7}.chip.st-pausa{background:#fef9c3}.chip.st-interv{background:#fee2e2}.chip.st-rientrato{background:#e5e7eb}
+.sheet a,.sheet button.it{display:flex;align-items:center;gap:10px;width:100%;padding:13px 12px;border:0;background:#f3f4f6;border-radius:10px;margin-bottom:8px;font-size:16px;cursor:pointer;text-decoration:none;color:var(--ink);text-align:left}
+.sheet .sts{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px}
+.sheet .sts button{border:2px solid transparent;border-radius:10px;padding:10px 6px;cursor:pointer;font-size:14px}
+.sheet .sts button.on{border-color:#111;font-weight:700}
+.warnl{padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.warnl:last-child{border-bottom:0}
+.cnt{display:flex;flex-wrap:wrap;gap:6px}
+.cnt span{background:#f3f4f6;border-radius:8px;padding:4px 8px;font-size:13px}
+.chk{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:15px}
+.chk input{width:20px;height:20px}
+.diar{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid var(--line);font-size:14px}
+.diar b{flex:none;width:44px;color:var(--mut);font-weight:600}
+.addgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.addgrid button{border:0;background:#f3f4f6;border-radius:12px;padding:14px 8px;font-size:15px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.addgrid button span{font-size:26px}
+.map-tools button.on{background:#1d4ed8;color:#fff}
+@media print{
+  .pgrp,.iv,.pt,.mini{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  h3{font-size:13px;margin:12px 0 2px}
+}
+.leaflet-tooltip.zlbl{background:rgba(255,255,255,.9);border:0;box-shadow:0 1px 3px rgba(0,0,0,.3);font-weight:700;font-size:11px;padding:1px 6px}
+.leaflet-tooltip.zlbl:before{display:none}
+</style>
+</head>
+<body>
+<header>
+  <button class="back" id="backBtn" style="display:none">‹ Indietro</button>
+  <h1 id="hTitle">Squadre in Servizio</h1>
+  <span class="offline-badge">offline</span>
+</header>
+<main id="main"></main>
+<nav class="tabs" id="tabs">
+  <button data-v="servizi" class="on"><span class="ic">🗺️</span>Servizi</button>
+  <button data-v="volontari"><span class="ic">👥</span>Volontari</button>
+  <button data-v="mezzi"><span class="ic">🚑</span>Mezzi</button>
+  <button data-v="impost"><span class="ic">⚙️</span>Impostazioni</button>
+</nav>
+<div id="dlgRoot"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+'use strict';
+/* ================= COSTANTI E STATO ================= */
+const COLORI=['#d62828','#1d4ed8','#15803d','#f59e0b','#7c3aed','#0891b2','#db2777','#4b5563','#ea580c','#65a30d','#000000','#a16207'];
+const MANSIONI_BASE=['Capo squadra','Referente / Coordinatore','Soccorritore','Autista','Medico','Infermiere','OPEM','Logistica','Operatore radio (TLC)','Squadra a piedi','Postazione fissa (PMA)'];
+const TIPI_BASE=['Stadio','Concerto','Evento sportivo','Manifestazione / Corteo','Fiera / Sagra','Processione','Gara podistica','Altro'];
+const TIPI_MEZZO={'Ambulanza':'🚑','Automedica':'🚗','Pulmino':'🚐','Auto':'🚙','Fuoristrada':'🛻','Moto':'🏍️','Bici':'🚲','Altro':'🚚'};
+const MEZZI_CON_AUTISTA=['Ambulanza','Automedica','Pulmino','Auto','Fuoristrada'];
+const TIPI_PUNTO={pma:['Posto medico (PMA)','🏥'],ingresso:['Ingresso','🚪'],fuga:['Via di fuga / uscita','🏃'],raccolta:['Punto di raccolta','👥'],parcheggio:['Parcheggio mezzi','🅿️'],radio:['Ponte radio','📡'],acqua:['Punto acqua','💧'],altro:['Altro','⭐']};
+const STATI={post:['In postazione','🟢'],pausa:['In pausa','☕'],interv:['In intervento','🚨'],rientrato:['Rientrato','🏠']};
+const ESITI=['In corso','Risolto sul posto','Trasportato in ospedale','Rifiuta assistenza','Allontanato','Altro'];
+const statoVuoto=()=>({v:2,volontari:[],mansioni:MANSIONI_BASE.slice(),tipi:TIPI_BASE.slice(),nomiPost:[],mezzi:[],luoghi:[],obbligatorie:['Capo squadra'],servizi:[]});
+let S=statoVuoto();
+const uid=()=>Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const $=s=>document.querySelector(s);
+const clone=o=>JSON.parse(JSON.stringify(o));
+const ora=(t=Date.now())=>new Date(t).toLocaleTimeString('it-IT',{hour:'2-digit',minute:'2-digit'});
+
+/* ---- salvataggio ---- */
+const DBN='squadre-servizio',ST='kv';
+function idb(){return new Promise((res,rej)=>{try{const r=indexedDB.open(DBN,1);r.onupgradeneeded=()=>r.result.createObjectStore(ST);r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error);}catch(e){rej(e)}})}
+async function idbGet(k){const db=await idb();return new Promise((res,rej)=>{const t=db.transaction(ST).objectStore(ST).get(k);t.onsuccess=()=>res(t.result);t.onerror=()=>rej(t.error);})}
+async function idbSet(k,v){const db=await idb();return new Promise((res,rej)=>{const tx=db.transaction(ST,'readwrite');tx.objectStore(ST).put(v,k);tx.oncomplete=()=>res();tx.onerror=()=>rej(tx.error);})}
+let saveT=null;
+async function saveNow(){clearTimeout(saveT);saveT=null;try{await idbSet('state',S);}catch(e){try{localStorage.setItem('squadre-state',JSON.stringify(S));}catch(e2){toast('⚠️ Impossibile salvare: spazio pieno? Fai un backup.');}}}
+function save(){clearTimeout(saveT);saveT=setTimeout(saveNow,120);}
+addEventListener('visibilitychange',()=>{if(document.visibilityState==='hidden'&&saveT)saveNow();});
+addEventListener('pagehide',()=>{if(saveT)saveNow();});
+async function load(){
+  let d=null;
+  try{d=await idbGet('state');}catch(e){}
+  if(!d){try{const j=localStorage.getItem('squadre-state');if(j)d=JSON.parse(j);}catch(e){}}
+  if(d&&d.v)S=Object.assign(statoVuoto(),d);
+  migra();
+  try{navigator.storage&&navigator.storage.persist&&navigator.storage.persist();}catch(e){}
+}
+function migra(){
+  S.nomiPost=S.nomiPost||[];S.mezzi=S.mezzi||[];S.luoghi=S.luoghi||[];if(!S.obbligatorie)S.obbligatorie=['Capo squadra'];
+  S.servizi.forEach(s=>{
+    ['postazioni','mezzi','punti','disegni','interventi','diario'].forEach(k=>{if(!Array.isArray(s[k]))s[k]=[];});
+    s.assegnazioni.forEach(a=>{
+      if(a.postId===undefined){
+        a.postId=null;
+        if(a.postazione&&a.postazione.trim()){
+          const n=a.postazione.trim();let p=s.postazioni.find(x=>x.nome.toLowerCase()===n.toLowerCase());
+          if(!p){p={id:uid(),nome:n,pos:a.pos||null};s.postazioni.push(p);}else if(!p.pos&&a.pos)p.pos=a.pos;
+          a.postId=p.id;a.pos=null;
+          if(!S.nomiPost.some(x=>x.toLowerCase()===n.toLowerCase()))S.nomiPost.push(n);
+        }
+      }
+      delete a.postazione;
+      if(!a.stato)a.stato='post';
+      if(a.mezzoSvcId===undefined)a.mezzoSvcId=null;
+    });
+  });
+  S.v=2;
+}
+
+/* ================= UTILITA' UI ================= */
+function toast(m,ms=2600){const t=document.createElement('div');t.className='toast';t.textContent=m;document.body.appendChild(t);setTimeout(()=>t.remove(),ms);}
+function dialog(html,onMount){
+  const o=document.createElement('div');o.className='ovl';o.innerHTML='<div class="dlg">'+html+'</div>';
+  $('#dlgRoot').appendChild(o);
+  const close=()=>o.remove();
+  o.addEventListener('click',e=>{if(e.target===o)close();});
+  o.querySelectorAll('[data-close]').forEach(b=>b.onclick=close);
+  onMount&&onMount(o.querySelector('.dlg'),close);
+  return close;
+}
+function ask(msg,okTxt='Conferma',danger=true){
+  return new Promise(res=>{
+    dialog(`<h2>${esc(msg)}</h2><div class="acts"><button class="btn sec" data-no>Annulla</button><button class="btn" data-ok style="${danger?'':'background:var(--ok)'}">${esc(okTxt)}</button></div>`,(d,close)=>{
+      d.querySelector('[data-no]').onclick=()=>{close();res(false)};
+      d.querySelector('[data-ok]').onclick=()=>{close();res(true)};
+    });
+  });
+}
+/* items: {t, fn} oppure {t, href} */
+function sheet(title,items,extraTop=''){
+  dialog(`<div class="sheet"><h2>${title}</h2>${extraTop}<div id="shIt"></div><button class="btn sec full" data-close>Chiudi</button></div>`,(d,close)=>{
+    const box=d.querySelector('#shIt');
+    items.filter(Boolean).forEach(it=>{
+      const el=document.createElement(it.href?'a':'button');
+      if(it.href){el.href=it.href;if(it.blank){el.target='_blank';el.rel='noopener';}el.onclick=()=>setTimeout(close,300);}
+      else{el.className='it';el.onclick=()=>{close();it.fn();};}
+      el.innerHTML=it.t;box.appendChild(el);
+    });
+    d._close=close;
+  });
+}
+const vNome=v=>v?(v.nome+' '+v.cognome).trim():'(volontario eliminato)';
+const iniz=v=>v?(((v.nome||'?')[0]||'')+((v.cognome||'')[0]||'')).toUpperCase():'?';
+const getVol=id=>S.volontari.find(v=>v.id===id);
+const getMezzo=id=>S.mezzi.find(m=>m.id===id);
+const fmtData=d=>{if(!d)return'';const[y,m,g]=d.split('-');return g+'/'+m+'/'+y;};
+const sortVol=a=>a.slice().sort((x,y)=>(x.cognome+x.nome).localeCompare(y.cognome+y.nome,'it'));
+function waNum(t){let d=String(t||'').replace(/[^\d+]/g,'');if(d.startsWith('+'))d=d.slice(1);else if(d.startsWith('00'))d=d.slice(2);else if(d.length<=10)d='39'+d;return d;}
+function contattiItems(v){
+  if(!v||!v.telefono)return[];
+  return[{t:'📞 Chiama '+esc(v.telefono),href:'tel:'+esc(v.telefono.replace(/\s/g,''))},{t:'💬 WhatsApp',href:'https://wa.me/'+waNum(v.telefono),blank:true}];
+}
+function loadScript(src){return new Promise((res,rej)=>{if(document.querySelector(`script[src="${src}"]`)){res();return;}const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=rej;document.head.appendChild(s);});}
+function scaricaFile(blob,nome){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=nome;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(a.href),5000);}
+
+/* ================= NAVIGAZIONE ================= */
+let curView='servizi',curSvc=null;
+function setView(v){
+  stopGps();destroyMap();curView=v;curSvc=null;
+  document.body.classList.remove('in-svc');
+  $('#backBtn').style.display='none';$('#hTitle').textContent='Squadre in Servizio';
+  document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.v===v));
+  ({servizi:renderServizi,volontari:renderVolontari,mezzi:renderMezzi,impost:renderImpost})[v]();
+  window.scrollTo(0,0);
+}
+document.querySelectorAll('#tabs button').forEach(b=>b.onclick=()=>setView(b.dataset.v));
+$('#backBtn').onclick=()=>setView('servizi');
+
+/* ================= ELENCO SERVIZI ================= */
+function renderServizi(){
+  const list=S.servizi.slice().sort((a,b)=>(b.data||'').localeCompare(a.data||''));
+  $('#main').innerHTML=`
+  <button class="btn full" id="newSvc" style="margin-bottom:12px">＋ Nuovo servizio</button>
+  <div class="card">${list.length?list.map(s=>`
+    <div class="list-item">
+      <div class="grow" data-open="${s.id}" style="cursor:pointer">
+        <div class="title">${esc(s.nome)}</div>
+        <div class="mut">${esc(s.tipo)}${s.data?' · '+fmtData(s.data):''}${s.luogo?' · '+esc(s.luogo):''}</div>
+        <div class="small mut">${s.assegnazioni.length} volontari · ${s.postazioni.length} postazioni · ${s.mezzi.length} mezzi · ${s.mappaTipo==='planimetria'?'planimetria':'mappa reale'}</div>
+      </div>
+      <button class="ib" title="Duplica" data-dup="${s.id}">⧉</button>
+      <button class="ib" title="Elimina" data-del="${s.id}">🗑</button>
+    </div>`).join(''):'<div class="empty">Nessun servizio.<br>Crea il primo con “Nuovo servizio”.</div>'}
+  </div>`;
+  $('#newSvc').onclick=()=>svcDialog();
+  document.querySelectorAll('[data-open]').forEach(e=>e.onclick=()=>openServizio(e.dataset.open));
+  document.querySelectorAll('[data-dup]').forEach(e=>e.onclick=()=>dupServizio(e.dataset.dup));
+  document.querySelectorAll('[data-del]').forEach(e=>e.onclick=async()=>{
+    const s=S.servizi.find(x=>x.id===e.dataset.del);
+    if(await ask('Eliminare il servizio “'+s.nome+'”?','Elimina')){S.servizi=S.servizi.filter(x=>x!==s);save();renderServizi();}
+  });
+}
+function copiaLuogoIn(s,l){
+  s.mappaTipo=l.mappaTipo;s.planimetria=l.planimetria?clone(l.planimetria):null;s.view=l.view?clone(l.view):null;s.base=l.base;s.luogoId=l.id;
+  s.postazioni=(l.postazioni||[]).map(p=>({id:uid(),nome:p.nome,pos:p.pos}));
+  s.punti=(l.punti||[]).map(p=>Object.assign(clone(p),{id:uid()}));
+  s.disegni=(l.disegni||[]).map(p=>Object.assign(clone(p),{id:uid()}));
+}
+function svcDialog(s){
+  const nuovo=!s;
+  s=s||{id:uid(),nome:'',tipo:'Stadio',data:new Date().toISOString().slice(0,10),luogo:'',note:'',mappaTipo:'reale',planimetria:null,view:null,
+    squadre:[{id:uid(),nome:'Squadra 1',colore:COLORI[0]}],postazioni:[],mezzi:[],punti:[],disegni:[],interventi:[],diario:[],assegnazioni:[]};
+  dialog(`<h2>${nuovo?'Nuovo servizio':'Dettagli servizio'}</h2>
+  <form id="fs">
+    ${nuovo&&S.luoghi.length?`<label class="f">Parti da un luogo salvato<select name="lg"><option value="">— nessuno, parto da zero —</option>${S.luoghi.map(l=>`<option value="${l.id}">${esc(l.nome)} (${(l.postazioni||[]).length} postazioni)</option>`).join('')}</select></label>`:''}
+    <label class="f">Nome del servizio<input name="nome" required value="${esc(s.nome)}" placeholder="es. Partita Lecce – Napoli"></label>
+    <div class="two">
+      <label class="f">Tipo di servizio<input name="tipo" list="dlTipi" value="${esc(s.tipo)}"></label>
+      <label class="f">Data<input type="date" name="data" value="${esc(s.data)}"></label>
+    </div>
+    <datalist id="dlTipi">${S.tipi.map(t=>`<option value="${esc(t)}">`).join('')}</datalist>
+    <label class="f">Luogo<input name="luogo" value="${esc(s.luogo)}" placeholder="es. Stadio Via del Mare, Lecce"></label>
+    <div id="mapSel">
+    <label class="f">Tipo di mappa
+      <div class="seg">
+        <label><input type="radio" name="mt" value="reale" ${s.mappaTipo!=='planimetria'?'checked':''}>🌍 Mappa reale</label>
+        <label><input type="radio" name="mt" value="planimetria" ${s.mappaTipo==='planimetria'?'checked':''}>📐 Planimetria</label>
+      </div>
+    </label>
+    <label class="f" id="plWrap">Planimetria (foto o immagine della piantina)<input type="file" name="pl" accept="image/*"></label>
+    <p class="small mut" id="plNote">${s.planimetria?'✅ Planimetria già caricata. Scegline un’altra solo se vuoi sostituirla.':'Hai un PDF? Fai uno screenshot della piantina e carica l’immagine.'}</p>
+    </div>
+    <p class="small mut" id="lgNote" style="display:none">✅ Mappa, postazioni, punti e zone verranno presi dal luogo salvato.</p>
+    <label class="f">Note<textarea name="note">${esc(s.note)}</textarea></label>
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">${nuovo?'Crea e apri la mappa':'Salva'}</button></div>
+  </form>`,(d,close)=>{
+    const f=d.querySelector('#fs');
+    const upd=()=>{
+      const lg=f.lg&&f.lg.value;
+      d.querySelector('#mapSel').style.display=lg?'none':'';d.querySelector('#lgNote').style.display=lg?'':'none';
+      const p=f.mt.value==='planimetria';d.querySelector('#plWrap').style.display=p?'':'none';d.querySelector('#plNote').style.display=p?'':'none';
+    };
+    f.querySelectorAll('[name=mt]').forEach(r=>r.onchange=upd);
+    if(f.lg)f.lg.onchange=()=>{const l=S.luoghi.find(x=>x.id===f.lg.value);if(l&&!f.luogo.value)f.luogo.value=l.nome;upd();};
+    upd();
+    f.onsubmit=async e=>{
+      e.preventDefault();
+      const l=f.lg&&f.lg.value?S.luoghi.find(x=>x.id===f.lg.value):null;
+      const fl=f.pl.files[0];
+      if(!l){
+        if(f.mt.value==='planimetria'&&!fl&&!s.planimetria){toast('Carica l’immagine della planimetria');return;}
+        const qualcosa=s.assegnazioni.some(a=>a.pos)||s.postazioni.some(p=>p.pos)||s.mezzi.some(m=>m.pos)||s.punti.length||s.disegni.length;
+        if((s.mappaTipo!==f.mt.value||fl&&s.planimetria)&&!nuovo&&qualcosa){
+          if(!await ask('Cambiando la mappa, tutte le posizioni (postazioni, mezzi, punti, zone) verranno azzerate. Continuare?','Continua'))return;
+          azzeraPosizioni(s);
+        }
+        if(fl){try{s.planimetria=await compressImg(fl);}catch(err){toast('Immagine non leggibile');return;}}
+        s.mappaTipo=f.mt.value;
+      }
+      const luogoCambiato=s.luogo!==f.luogo.value.trim();
+      Object.assign(s,{nome:f.nome.value.trim(),tipo:f.tipo.value.trim()||'Altro',data:f.data.value,luogo:f.luogo.value.trim(),note:f.note.value.trim()});
+      if(l)copiaLuogoIn(s,l);
+      else if(luogoCambiato&&s.mappaTipo==='reale'&&!s.postazioni.some(p=>p.pos)&&!s.assegnazioni.some(a=>a.pos))s.view=null;
+      if(s.tipo&&!S.tipi.includes(s.tipo))S.tipi.push(s.tipo);
+      if(nuovo)S.servizi.push(s);
+      save();close();openServizio(s.id);
+    };
+  });
+}
+function azzeraPosizioni(s){
+  s.assegnazioni.forEach(a=>a.pos=null);s.postazioni.forEach(p=>p.pos=null);s.mezzi.forEach(m=>m.pos=null);
+  s.punti=[];s.disegni=[];s.interventi.forEach(i=>i.pos=null);s.view=null;s.luogoId=null;
+}
+function compressImg(file,max=2400){
+  return new Promise((res,rej)=>{
+    const img=new Image(),url=URL.createObjectURL(file);
+    img.onload=()=>{let w=img.naturalWidth,h=img.naturalHeight;const k=Math.min(1,max/Math.max(w,h));w=Math.round(w*k);h=Math.round(h*k);
+      const c=document.createElement('canvas');c.width=w;c.height=h;const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(img,0,0,w,h);
+      URL.revokeObjectURL(url);res({src:c.toDataURL('image/jpeg',.85),w,h});};
+    img.onerror=()=>{URL.revokeObjectURL(url);rej();};img.src=url;
+  });
+}
+function dupServizio(id){
+  const s=S.servizi.find(x=>x.id===id);
+  const n=clone(s);
+  n.id=uid();n.nome=s.nome+' (copia)';n.data=new Date().toISOString().slice(0,10);
+  const mq={},mp={},mm={};
+  n.squadre.forEach(q=>{const o=q.id;q.id=uid();mq[o]=q.id;});
+  n.postazioni.forEach(p=>{const o=p.id;p.id=uid();mp[o]=p.id;});
+  n.mezzi.forEach(m=>{const o=m.id;m.id=uid();mm[o]=m.id;});
+  n.punti.forEach(p=>p.id=uid());n.disegni.forEach(p=>p.id=uid());
+  n.assegnazioni.forEach(a=>{const o=a.id;a.id=uid();a.squadraId=mq[a.squadraId]||null;a.postId=mp[a.postId]||null;a.mezzoSvcId=mm[a.mezzoSvcId]||null;a.stato='post';
+    n.squadre.forEach(q=>{if(q.capo===o)q.capo=a.id;});});
+  n.squadre.forEach(q=>{if(q.capo&&!n.assegnazioni.some(a=>a.id===q.capo)&&!getVol(q.capo))q.capo='';});
+  n.interventi=[];n.diario=[];
+  S.servizi.push(n);save();toast('Servizio duplicato con squadre, postazioni, mezzi e volontari');renderServizi();
+}
+
+/* ================= RUBRICA VOLONTARI ================= */
+function renderVolontari(q=''){
+  const ql=q.toLowerCase();
+  const list=sortVol(S.volontari).filter(v=>!ql||(v.nome+' '+v.cognome+' '+(v.mansione||'')).toLowerCase().includes(ql));
+  $('#main').innerHTML=`
+  <div class="row" style="margin-bottom:12px"><button class="btn grow" id="newVol">＋ Aggiungi volontario</button><button class="btn sec" id="impVol">📥 Importa da Excel</button></div>
+  <input class="search" id="qv" placeholder="🔍 Cerca per nome, cognome o mansione" value="${esc(q)}">
+  <div class="card">${list.length?list.map(v=>`
+    <div class="list-item">
+      <div class="pin" style="background:#6b7280;width:38px;height:38px;flex:none">${esc(iniz(v))}</div>
+      <div class="grow" data-cv="${v.id}" style="cursor:pointer"><div class="title">${esc(v.cognome)} ${esc(v.nome)}</div>
+      <div class="mut small">${esc(v.mansione||'—')}${v.telefono?' · 📞 '+esc(v.telefono):''}${v.radio?' · 📻 '+esc(v.radio):''}</div></div>
+      <button class="ib" data-ed="${v.id}">✏️</button><button class="ib" data-del="${v.id}">🗑</button>
+    </div>`).join(''):`<div class="empty">${S.volontari.length?'Nessun risultato.':'La rubrica è vuota.<br>Aggiungi i volontari una volta sola (o importali da Excel) e poi li sceglierai in ogni servizio.'}</div>`}
+  </div><p class="mut small" style="text-align:center">${S.volontari.length} volontari in rubrica</p>`;
+  const rif=()=>renderVolontari($('#qv')?$('#qv').value:'');
+  $('#newVol').onclick=()=>volDialog(null,rif);
+  $('#impVol').onclick=importaVolontari;
+  const qi=$('#qv');qi.oninput=()=>{const p=qi.selectionStart;renderVolontari(qi.value);const n=$('#qv');n.focus();n.setSelectionRange(p,p);};
+  document.querySelectorAll('[data-cv]').forEach(b=>b.onclick=()=>{const v=getVol(b.dataset.cv);
+    sheet(esc(vNome(v)),[...contattiItems(v),{t:'✏️ Modifica',fn:()=>volDialog(v,rif)}],v.telefono?'':'<p class="mut small">Nessun numero di telefono inserito.</p>');});
+  document.querySelectorAll('[data-ed]').forEach(b=>b.onclick=()=>volDialog(getVol(b.dataset.ed),rif));
+  document.querySelectorAll('[data-del]').forEach(b=>b.onclick=async()=>{
+    const v=getVol(b.dataset.del);const n=S.servizi.filter(s=>s.assegnazioni.some(a=>a.volId===v.id)).length;
+    if(await ask(`Eliminare ${vNome(v)} dalla rubrica?${n?` Verrà tolto anche da ${n} servizi.`:''}`,'Elimina')){
+      S.volontari=S.volontari.filter(x=>x!==v);S.servizi.forEach(s=>s.assegnazioni=s.assegnazioni.filter(a=>a.volId!==v.id));save();rif();}
+  });
+}
+function mansOpts(sel){const l=S.mansioni.slice();if(sel&&!l.includes(sel))l.push(sel);return '<option value="">—</option>'+l.map(m=>`<option ${m===sel?'selected':''}>${esc(m)}</option>`).join('');}
+function volDialog(v,after){
+  const nuovo=!v;v=v||{id:uid(),nome:'',cognome:'',telefono:'',radio:'',mansione:''};
+  dialog(`<h2>${nuovo?'Nuovo volontario':'Modifica volontario'}</h2><form id="fv">
+    <div class="two"><label class="f">Nome<input name="nome" required value="${esc(v.nome)}"></label>
+    <label class="f">Cognome<input name="cognome" required value="${esc(v.cognome)}"></label></div>
+    <label class="f">Mansione abituale<select name="mansione">${mansOpts(v.mansione)}</select></label>
+    <div class="two"><label class="f">Telefono<input name="telefono" type="tel" value="${esc(v.telefono)}"></label>
+    <label class="f">Radio / canale<input name="radio" value="${esc(v.radio)}" placeholder="es. CH 3 / 4521"></label></div>
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fv');
+    f.onsubmit=e=>{e.preventDefault();
+      Object.assign(v,{nome:f.nome.value.trim(),cognome:f.cognome.value.trim(),telefono:f.telefono.value.trim(),radio:f.radio.value.trim(),mansione:f.mansione.value});
+      if(nuovo)S.volontari.push(v);save();close();after&&after(v);};
+  });
+}
+/* ---- importazione da Excel / CSV ---- */
+function importaVolontari(){
+  dialog(`<h2>Importa volontari da Excel</h2>
+  <p class="small mut">Va bene un file Excel (.xlsx, .xls) o .csv. La prima riga deve avere i titoli delle colonne: <b>Nome</b>, <b>Cognome</b>, e se vuoi <b>Telefono</b>, <b>Mansione</b>, <b>Radio</b>. Va bene anche una sola colonna “Nominativo” con nome e cognome insieme.</p>
+  <label class="btn full" style="display:block;text-align:center;margin:10px 0">📂 Scegli il file<input type="file" id="xf" accept=".xlsx,.xls,.csv,.ods" style="display:none"></label>
+  <button class="btn sec full" id="xm">⬇ Scarica un modello vuoto</button>
+  <div class="acts"><button class="btn sec" data-close>Chiudi</button></div>`,(d,close)=>{
+    d.querySelector('#xm').onclick=()=>scaricaFile(new Blob(['﻿Nome;Cognome;Telefono;Mansione;Radio\nMario;Rossi;3331234567;Soccorritore;CH 3\n'],{type:'text/csv'}),'modello-volontari.csv');
+    d.querySelector('#xf').onchange=async e=>{
+      const file=e.target.files[0];if(!file)return;
+      let rows;
+      try{
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+        rows=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:'',raw:false});
+      }catch(err){
+        if(/\.csv$/i.test(file.name)){const t=await file.text();const sep=(t.split('\n')[0].match(/;/g)||[]).length>=(t.split('\n')[0].match(/,/g)||[]).length?';':',';rows=t.split(/\r?\n/).map(r=>r.split(sep).map(c=>c.replace(/^"|"$/g,'').trim()));}
+        else{toast('Non riesco a leggere il file: serve internet la prima volta per leggere i file Excel',4000);return;}
+      }
+      rows=rows.filter(r=>r.some(c=>String(c).trim()));
+      if(!rows.length){toast('Il file è vuoto');return;}
+      close();anteprimaImport(rows);
+    };
+  });
+}
+function anteprimaImport(rows){
+  const h=rows[0].map(c=>String(c).toLowerCase().trim());
+  const find=re=>h.findIndex(c=>re.test(c));
+  let iN=find(/^nome$|^nome\b(?!.*cognome)/),iC=find(/cognome/),iX=find(/nominativo|nome e cognome|cognome e nome|^volontario/),
+      iT=find(/tel|cell/),iM=find(/mansione|qualifica|ruolo/),iR=find(/radio|canale/);
+  let start=1;
+  if(iN<0&&iC<0&&iX<0){iN=0;iC=1;iT=rows[0].length>2?2:-1;iM=rows[0].length>3?3:-1;iR=rows[0].length>4?4:-1;start=0;}
+  if(iX>=0&&iN>=0&&iC>=0)iX=-1;
+  const combinato=iX>=0;
+  const build=ordine=>rows.slice(start).map(r=>{
+    let nome='',cognome='';
+    if(combinato){const p=String(r[iX]).trim().split(/\s+/),PART=/^(de|di|da|del|della|dello|dei|degli|delle|dal|dalla|lo|la|li|le|d'|van|von|mac|mc|san|santa|santo)$/i;if(ordine==='cn'){const c=[p.shift()||''];while(p.length>1&&PART.test(c[c.length-1]))c.push(p.shift());cognome=c.join(' ');nome=p.join(' ');}else{const c=[p.pop()||''];while(p.length>1&&PART.test(p[p.length-1]))c.unshift(p.pop());cognome=c.join(' ');nome=p.join(' ');}}
+    else{nome=String(r[iN]??'').trim();cognome=String(r[iC]??'').trim();}
+    const cap=s=>s.toLowerCase().replace(/(^|[\s'-])\S/g,x=>x.toUpperCase());
+    return{nome:cap(nome),cognome:cap(cognome),telefono:iT>=0?String(r[iT]).trim():'',mansione:iM>=0?String(r[iM]).trim():'',radio:iR>=0?String(r[iR]).trim():''};
+  }).filter(v=>v.nome||v.cognome);
+  const draw=(d,ordine)=>{
+    const l=build(ordine);
+    const key=v=>(v.nome+'|'+v.cognome).toLowerCase();
+    const esist=new Set(S.volontari.map(key));
+    const nuovi=l.filter(v=>!esist.has(key(v)));
+    d.querySelector('#pv').innerHTML=`<p><b>${l.length}</b> volontari trovati: <b>${nuovi.length}</b> nuovi${l.length-nuovi.length?`, ${l.length-nuovi.length} già in rubrica (verranno completati se mancano dei dati)`:''}.</p>
+      <div class="card" style="padding:6px 10px;max-height:220px;overflow:auto">${l.slice(0,30).map(v=>`<div class="small" style="padding:3px 0;border-bottom:1px solid #eee">Nome: <b>${esc(v.nome)}</b> · Cognome: <b>${esc(v.cognome)}</b> ${v.telefono?'· '+esc(v.telefono):''} ${v.mansione?'· '+esc(v.mansione):''}</div>`).join('')}${l.length>30?`<div class="small mut">…e altri ${l.length-30}</div>`:''}</div>
+      <p class="small mut">Controlla che il <b>nome</b> e il <b>cognome</b> siano al posto giusto.</p>`;
+    return l;
+  };
+  dialog(`<h2>Controlla prima di importare</h2>
+    ${combinato?`<label class="f">Nella colonna i nomi sono scritti come<select id="ord"><option value="cn">Cognome Nome (es. Rossi Mario)</option><option value="nc">Nome Cognome (es. Mario Rossi)</option></select></label>`:''}
+    <div id="pv"></div>
+    <div class="acts"><button class="btn sec" data-close>Annulla</button><button class="btn" id="go">Importa</button></div>`,(d,close)=>{
+    let l=draw(d,'cn');
+    const o=d.querySelector('#ord');if(o)o.onchange=()=>{l=draw(d,o.value);};
+    d.querySelector('#go').onclick=()=>{
+      let n=0,u=0;
+      l.forEach(v=>{
+        if(v.mansione&&!S.mansioni.some(m=>m.toLowerCase()===v.mansione.toLowerCase()))S.mansioni.push(v.mansione);
+        else if(v.mansione)v.mansione=S.mansioni.find(m=>m.toLowerCase()===v.mansione.toLowerCase());
+        const e=S.volontari.find(x=>x.nome.toLowerCase()===v.nome.toLowerCase()&&x.cognome.toLowerCase()===v.cognome.toLowerCase());
+        if(e){['telefono','mansione','radio'].forEach(k=>{if(!e[k]&&v[k]){e[k]=v[k];u++;}});}
+        else{S.volontari.push(Object.assign({id:uid()},v));n++;}
+      });
+      save();close();toast(`✅ Importati ${n} volontari${u?' e completati alcuni dati':''}`);renderVolontari();
+    };
+  });
+}
+
+/* ================= RUBRICA MEZZI ================= */
+const mzEmoji=m=>TIPI_MEZZO[m&&m.tipo]||'🚚';
+const mzNome=m=>m?(m.sigla||m.tipo):'(mezzo eliminato)';
+function renderMezzi(){
+  $('#main').innerHTML=`<button class="btn full" id="newMz" style="margin-bottom:12px">＋ Aggiungi mezzo</button>
+  <div class="card">${S.mezzi.length?S.mezzi.slice().sort((a,b)=>(a.sigla||'').localeCompare(b.sigla||'','it')).map(m=>`
+    <div class="list-item"><div style="font-size:28px">${mzEmoji(m)}</div>
+    <div class="grow"><div class="title">${esc(m.sigla||m.tipo)}</div><div class="small mut">${esc(m.tipo)}${m.targa?' · targa '+esc(m.targa):''}${m.note?' · '+esc(m.note):''}</div></div>
+    <button class="ib" data-em="${m.id}">✏️</button><button class="ib" data-dm="${m.id}">🗑</button></div>`).join(''):'<div class="empty">Nessun mezzo.<br>Aggiungi i mezzi del comitato una volta sola: poi li sceglierai in ogni servizio.</div>'}</div>`;
+  $('#newMz').onclick=()=>mezzoRubDialog(null,renderMezzi);
+  document.querySelectorAll('[data-em]').forEach(b=>b.onclick=()=>mezzoRubDialog(getMezzo(b.dataset.em),renderMezzi));
+  document.querySelectorAll('[data-dm]').forEach(b=>b.onclick=async()=>{
+    const m=getMezzo(b.dataset.dm);
+    if(await ask(`Eliminare ${mzNome(m)}? Verrà tolto anche dai servizi.`,'Elimina')){
+      S.mezzi=S.mezzi.filter(x=>x!==m);
+      S.servizi.forEach(s=>{const ids=s.mezzi.filter(x=>x.mezzoId===m.id).map(x=>x.id);s.mezzi=s.mezzi.filter(x=>x.mezzoId!==m.id);s.assegnazioni.forEach(a=>{if(ids.includes(a.mezzoSvcId)){a.mezzoSvcId=null;a.pos=null;}});});
+      save();renderMezzi();}
+  });
+}
+function mezzoRubDialog(m,after){
+  const nuovo=!m;m=m||{id:uid(),sigla:'',tipo:'Ambulanza',targa:'',note:''};
+  dialog(`<h2>${nuovo?'Nuovo mezzo':'Modifica mezzo'}</h2><form id="fmz">
+    <label class="f">Sigla / nome<input name="sigla" required value="${esc(m.sigla)}" placeholder="es. Alfa 1, Ambulanza 3"></label>
+    <div class="two"><label class="f">Tipo<select name="tipo">${Object.keys(TIPI_MEZZO).map(t=>`<option ${t===m.tipo?'selected':''}>${t}</option>`).join('')}</select></label>
+    <label class="f">Targa<input name="targa" value="${esc(m.targa)}"></label></div>
+    <label class="f">Note<input name="note" value="${esc(m.note)}"></label>
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fmz');
+    f.onsubmit=e=>{e.preventDefault();Object.assign(m,{sigla:f.sigla.value.trim(),tipo:f.tipo.value,targa:f.targa.value.trim().toUpperCase(),note:f.note.value.trim()});if(nuovo)S.mezzi.push(m);save();close();after&&after(m);};
+  });
+}
+
+/* ================= IMPOSTAZIONI ================= */
+function renderImpost(){
+  $('#main').innerHTML=`
+  <div class="card"><h2>Mansioni</h2>
+    <div>${S.mansioni.map((m,i)=>`<div class="list-item"><div class="grow">${esc(m)}</div><button class="ib" data-um="${i}">↑</button><button class="ib" data-dm="${i}">🗑</button></div>`).join('')}</div>
+    <form id="fm" class="row" style="margin-top:10px"><input class="search grow" style="margin:0" name="m" placeholder="Nuova mansione"><button class="btn sm">Aggiungi</button></form>
+  </div>
+  <div class="card"><h2>Controllo delle squadre</h2>
+    <p class="mut small">Mansioni che ogni squadra deve avere. Se ne manca una, il programma ti avvisa nel riepilogo del servizio.</p>
+    ${S.mansioni.map(m=>`<label class="chk"><input type="checkbox" data-ob="${esc(m)}" ${S.obbligatorie.includes(m)?'checked':''}>${esc(m)}</label>`).join('')}
+  </div>
+  <div class="card"><h2>Luoghi salvati</h2>
+    <p class="mut small">Un luogo salvato (es. uno stadio) conserva mappa, postazioni, punti fissi e zone. Si salva dal riepilogo di un servizio e si sceglie quando ne crei uno nuovo.</p>
+    ${S.luoghi.length?S.luoghi.map(l=>`<div class="list-item"><div class="grow"><div class="title">📍 ${esc(l.nome)}</div><div class="small mut">${l.mappaTipo==='planimetria'?'planimetria':'mappa reale'} · ${(l.postazioni||[]).length} postazioni · ${(l.punti||[]).length} punti · ${(l.disegni||[]).length} zone/percorsi</div></div><button class="ib" data-rl="${l.id}">✏️</button><button class="ib" data-dl="${l.id}">🗑</button></div>`).join(''):'<p class="mut small">Nessun luogo salvato.</p>'}
+  </div>
+  <div class="card"><h2>Postazioni memorizzate</h2>
+    <p class="mut small">Ogni postazione che scrivi viene ricordata e la ritrovi nel menu a tendina.</p>
+    <div>${S.nomiPost.length?S.nomiPost.map((m,i)=>`<span class="tag" style="font-size:14px;padding:5px 10px;margin:3px">📌 ${esc(m)} <a href="#" data-dpn="${i}" style="color:var(--red);text-decoration:none">✕</a></span>`).join(''):'<span class="mut small">Nessuna per ora.</span>'}</div>
+    <form id="fpn" class="row" style="margin-top:10px"><input class="search grow" style="margin:0" name="p" placeholder="Nuova postazione (es. Tribuna est)"><button class="btn sm">Aggiungi</button></form>
+  </div>
+  <div class="card"><h2>Tipi di servizio</h2>
+    <div>${S.tipi.map((m,i)=>`<span class="tag" style="font-size:14px;padding:5px 10px;margin:3px">${esc(m)} <a href="#" data-dt="${i}" style="color:var(--red);text-decoration:none">✕</a></span>`).join('')}</div>
+    <form id="ft" class="row" style="margin-top:10px"><input class="search grow" style="margin:0" name="t" placeholder="Nuovo tipo (es. Palazzetto)"><button class="btn sm">Aggiungi</button></form>
+  </div>
+  <div class="card"><h2>Backup e trasferimento</h2>
+    <p class="mut small">I dati restano solo su questo dispositivo. Per spostarli su un altro (PC ↔ telefono) o tenerne una copia, salva il backup e poi aprilo sull'altro dispositivo con “Ripristina”.</p>
+    <div class="row" style="flex-wrap:wrap"><button class="btn" id="bExp">💾 Salva backup</button><label class="btn sec" style="display:inline-block">📂 Ripristina backup<input type="file" id="bImp" accept=".json,application/json" style="display:none"></label></div>
+  </div>
+  <div class="card"><h2>Uso senza internet</h2><p class="mut small" id="offInfo"></p></div>
+  <p class="mut small" style="text-align:center">Squadre in Servizio · v2.0</p>`;
+  const swOk='serviceWorker' in navigator&&navigator.serviceWorker.controller;
+  $('#offInfo').innerHTML=swOk?'✅ L’app è salvata sul dispositivo e si apre anche senza connessione. Per la <b>mappa reale</b> offline, apri il servizio quando hai internet e usa “⬇ Mappa offline” per scaricare la zona. La <b>planimetria</b> funziona sempre offline.':'⚠️ La modalità offline si attiva quando l’app è aperta dal suo indirizzo internet (non da file sul PC). Aprila una volta con la connessione, poi aggiungila alla schermata Home.';
+  document.querySelectorAll('[data-dm]').forEach(b=>b.onclick=()=>{S.mansioni.splice(+b.dataset.dm,1);save();renderImpost();});
+  document.querySelectorAll('[data-um]').forEach(b=>b.onclick=()=>{const i=+b.dataset.um;if(i>0){[S.mansioni[i-1],S.mansioni[i]]=[S.mansioni[i],S.mansioni[i-1]];save();renderImpost();}});
+  document.querySelectorAll('[data-ob]').forEach(c=>c.onchange=()=>{const m=c.dataset.ob;S.obbligatorie=S.obbligatorie.filter(x=>x!==m);if(c.checked)S.obbligatorie.push(m);save();});
+  document.querySelectorAll('[data-dl]').forEach(b=>b.onclick=async()=>{const l=S.luoghi.find(x=>x.id===b.dataset.dl);if(await ask('Eliminare il luogo salvato “'+l.nome+'”? I servizi già creati non cambiano.','Elimina')){S.luoghi=S.luoghi.filter(x=>x!==l);save();renderImpost();}});
+  document.querySelectorAll('[data-rl]').forEach(b=>b.onclick=()=>{const l=S.luoghi.find(x=>x.id===b.dataset.rl);
+    dialog(`<h2>Rinomina luogo</h2><form id="frl"><label class="f">Nome<input name="n" required value="${esc(l.nome)}"></label><div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{d.querySelector('#frl').onsubmit=e=>{e.preventDefault();l.nome=e.target.n.value.trim();save();close();renderImpost();};});});
+  document.querySelectorAll('[data-dpn]').forEach(b=>b.onclick=e=>{e.preventDefault();S.nomiPost.splice(+b.dataset.dpn,1);save();renderImpost();});
+  document.querySelectorAll('[data-dt]').forEach(b=>b.onclick=e=>{e.preventDefault();S.tipi.splice(+b.dataset.dt,1);save();renderImpost();});
+  $('#fpn').onsubmit=e=>{e.preventDefault();memorizzaNome(e.target.p.value);save();renderImpost();};
+  $('#fm').onsubmit=e=>{e.preventDefault();const m=e.target.m.value.trim();if(m&&!S.mansioni.includes(m)){S.mansioni.push(m);save();}renderImpost();};
+  $('#ft').onsubmit=e=>{e.preventDefault();const m=e.target.t.value.trim();if(m&&!S.tipi.includes(m)){S.tipi.push(m);save();}renderImpost();};
+  $('#bExp').onclick=()=>{scaricaFile(new Blob([JSON.stringify(S)],{type:'application/json'}),'squadre-backup-'+new Date().toISOString().slice(0,10)+'.json');toast('Backup salvato nei download');};
+  $('#bImp').onchange=async e=>{
+    const f=e.target.files[0];if(!f)return;
+    try{const d=JSON.parse(await f.text());if(!d.v||!Array.isArray(d.servizi))throw 0;
+      if(await ask(`Ripristinare il backup? (${d.servizi.length} servizi, ${d.volontari.length} volontari). I dati attuali su questo dispositivo verranno sostituiti.`,'Ripristina')){S=Object.assign(statoVuoto(),d);migra();save();toast('Backup ripristinato');renderImpost();}
+    }catch(err){toast('File di backup non valido');}
+  };
+}
+function memorizzaNome(n){n=(n||'').trim();if(n&&!S.nomiPost.some(x=>x.toLowerCase()===n.toLowerCase())){S.nomiPost.push(n);S.nomiPost.sort((a,b)=>a.localeCompare(b,'it'));}}
+
+/* ================= SCHEDA SERVIZIO: UTILITA' ================= */
+let map=null,markers={},placing=null,pTab='vol',baseLayers=null,drawing=null,gps=null;
+function destroyMap(){if(map){map.remove();map=null;}markers={};placing=null;drawing=null;gps&&(gps.marker=null,gps.circle=null);}
+const svc=()=>S.servizi.find(s=>s.id===curSvc);
+const sqOf=(s,id)=>s.squadre.find(q=>q.id===id);
+const colOf=(s,a)=>(sqOf(s,a.squadraId)||{colore:'#6b7280'}).colore;
+const postOf=(s,id)=>id?s.postazioni.find(p=>p.id===id):null;
+const smOf=(s,id)=>id?s.mezzi.find(m=>m.id===id):null;
+const assOf=(s,id)=>s.assegnazioni.find(a=>a.id===id);
+function luogoDi(s,a){
+  const p=postOf(s,a.postId);if(p)return{k:'post',o:p,pos:p.pos,l:'📌 '+p.nome};
+  const m=smOf(s,a.mezzoSvcId);if(m){const mz=getMezzo(m.mezzoId);return{k:'mezzo',o:m,pos:m.pos,l:mzEmoji(mz)+' '+mzNome(mz)};}
+  return{k:'man',pos:a.pos,l:'✋ manuale'};
+}
+const posizionato=(s,a)=>!!luogoDi(s,a).pos;
+function trovaOCreaPost(s,nome){
+  nome=nome.trim();let p=s.postazioni.find(x=>x.nome.toLowerCase()===nome.toLowerCase());
+  if(!p){p={id:uid(),nome,pos:null};s.postazioni.push(p);}
+  memorizzaNome(nome);return p;
+}
+function logD(s,testo){s.diario.push({id:uid(),t:Date.now(),testo});}
+function oggetto(s,k,id){return({ass:s.assegnazioni,post:s.postazioni,mezzo:s.mezzi,punto:s.punti,interv:s.interventi})[k].find(x=>x.id===id);}
+function nomeOggetto(s,k,id){const o=oggetto(s,k,id);if(!o)return'';
+  if(k==='ass')return vNome(getVol(o.volId));if(k==='post')return'la postazione '+o.nome;if(k==='mezzo')return mzNome(getMezzo(o.mezzoId));
+  if(k==='punto')return o.nome||TIPI_PUNTO[o.tipo][0];return'l’intervento n.'+o.n;}
+
+/* ================= SCHEDA SERVIZIO ================= */
+const TABS=[['vol','Volontari'],['post','Postazioni'],['mezzi','Mezzi'],['punti','Punti e zone'],['interv','Interventi'],['diario','Diario'],['sq','Squadre'],['info','Riepilogo']];
+function openServizio(id){
+  stopGps();destroyMap();curSvc=id;const s=svc();if(!s)return setView('servizi');
+  document.body.classList.add('in-svc');$('#backBtn').style.display='';$('#hTitle').textContent=s.nome;
+  $('#main').innerHTML=`
+  <div class="svc">
+    <div id="printHead"></div>
+    <div class="mapwrap" id="mapwrap">
+      <div id="map"></div>
+      ${s.mappaTipo==='reale'?`<form class="map-search" id="msrch"><input name="q" placeholder="Cerca luogo (es. stadio di Lecce)"><button>Vai</button></form>`:''}
+      <div class="map-tools">
+        <button id="tAdd" style="background:var(--red);color:#fff">➕<span> Aggiungi</span></button>
+        ${s.mappaTipo==='reale'?'<button id="tGps">🎯<span> Dove sono</span></button>':''}
+        <button id="tLbl">🏷<span> Nomi</span></button>
+        <button id="tFit">⤢<span> Tutti</span></button>
+        ${s.mappaTipo==='reale'?'<button id="tOff">⬇<span> Mappa offline</span></button>':''}
+        <button id="tShare">📤<span> Condividi / stampa</span></button>
+      </div>
+      <div id="pbar"></div>
+    </div>
+    <div class="panel">
+      <div class="ptabs" id="ptabs">${TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join('')}</div>
+      <div class="pbody" id="pbody"></div>
+    </div>
+    <div id="printTable"></div>
+  </div>`;
+  document.querySelectorAll('.ptabs button').forEach(b=>b.onclick=()=>{pTab=b.dataset.t;renderPanel();});
+  pTab=(!s.postazioni.length&&!s.assegnazioni.length)?'post':'vol';
+  initMap(s);renderPanel();
+  $('#tAdd').onclick=menuAggiungi;
+  if($('#tGps'))$('#tGps').onclick=toggleGps;
+  $('#tLbl').onclick=()=>document.body.classList.toggle('hide-labels');
+  $('#tFit').onclick=()=>fitAll(true);
+  $('#tShare').onclick=menuCondividi;
+  if($('#tOff'))$('#tOff').onclick=scaricaOffline;
+  if($('#msrch'))$('#msrch').onsubmit=e=>{e.preventDefault();cercaLuogo(e.target.q.value);};
+}
+function aggiorna(){save();drawMarkers();renderPanel();}
+
+/* ---- mappa ---- */
+function initMap(s){
+  if(typeof L==='undefined'){$('#map').innerHTML='<div class="nomap">La mappa non si è caricata: serve internet la prima volta che apri l’app.</div>';return;}
+  if(s.mappaTipo==='planimetria'){
+    if(!s.planimetria){$('#map').innerHTML='<div class="nomap">Nessuna planimetria caricata.<br>Vai su “Riepilogo” → Modifica per caricarla.</div>';return;}
+    const {w,h,src}=s.planimetria,b=[[0,0],[h,w]];
+    map=L.map('map',{crs:L.CRS.Simple,minZoom:-5,maxZoom:3,zoomSnap:.25,attributionControl:false});
+    L.imageOverlay(src,b).addTo(map);
+    map.setMaxBounds(L.latLngBounds(b).pad(.5));
+    if(s.view)map.setView(s.view.c,s.view.z);else map.fitBounds(b);
+  }else{
+    const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,crossOrigin:'anonymous',attribution:'© OpenStreetMap'});
+    const sat=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',{maxZoom:19,maxNativeZoom:19,crossOrigin:'anonymous',attribution:'© Esri'});
+    baseLayers={'🛰 Satellite':sat,'🗺 Stradale':osm};
+    map=L.map('map',{zoomControl:true,layers:[s.base==='osm'?osm:sat]});
+    L.control.layers(baseLayers,null,{position:'bottomleft'}).addTo(map);
+    map.on('baselayerchange',e=>{s.base=e.layer===osm?'osm':'sat';save();});
+    if(s.view)map.setView(s.view.c,s.view.z);
+    else{map.setView([41.9,12.5],6);if(s.luogo)cercaLuogo(s.luogo,true);}
+  }
+  map.on('moveend',()=>{const c=map.getCenter();s.view={c:[c.lat,c.lng],z:map.getZoom()};save();});
+  map.on('click',e=>{
+    const ll=[e.latlng.lat,e.latlng.lng];
+    if(drawing){drawing.pts.push(ll);aggiornaDisegno();return;}
+    if(!placing)return;
+    const pl=placing;setPlacing(null);
+    if(pl.k==='new'){({post:()=>postDialog(null,ll),punto:()=>puntoDialog(null,ll,pl.tipo),interv:()=>intervDialog(null,ll),mezzo:()=>mezzoSvcDialog(null,ll)})[pl.what]();return;}
+    const o=oggetto(s,pl.k,pl.id);if(o){o.pos=ll;}
+    aggiorna();
+  });
+  drawMarkers();
+}
+async function cercaLuogo(q,silent){
+  q=(q||'').trim();if(!q||!map)return;
+  try{
+    const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=it&q='+encodeURIComponent(q),{headers:{'Accept-Language':'it'}});
+    const j=await r.json();
+    if(j[0]){const b=j[0].boundingbox;map.fitBounds([[+b[0],+b[2]],[+b[1],+b[3]]]);if(map.getZoom()<16)map.setZoom(17);}
+    else if(!silent)toast('Luogo non trovato: prova a scriverlo diversamente');
+  }catch(e){if(!silent)toast('Ricerca non disponibile senza internet');}
+}
+const miniPin=(s,a)=>{const v=getVol(a.volId);return`<span class="mini st-${a.stato}" style="background:${colOf(s,a)}" title="${esc(vNome(v))}">${esc(iniz(v))}</span>`;};
+const nomeConStato=(s,a)=>(a.stato!=='post'?STATI[a.stato][1]+' ':'')+esc(vNome(getVol(a.volId)));
+function gruppoIcon(s,titolo,lista,cls=''){
+  return L.divIcon({className:'vpin',iconSize:[0,0],iconAnchor:[0,0],popupAnchor:[0,-30],
+    html:`<div class="ppt"></div><div class="pgrp ${cls}"><div class="pgrp-n">${titolo}</div>
+    ${lista.length?`<div class="pgrp-v">${lista.map(a=>miniPin(s,a)).join('')}</div><div class="pgrp-l">${lista.map(a=>nomeConStato(s,a)).join('<br>')}</div>`:'<div class="pgrp-e">nessuno</div>'}</div>`});
+}
+function volIcon(s,a){
+  const v=getVol(a.volId);
+  return L.divIcon({className:'vpin',iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-16],
+    html:`<div class="pin st-${a.stato}" style="background:${colOf(s,a)}" ${a.stato!=='post'?`data-b="${STATI[a.stato][1]}"`:''}>${esc(iniz(v))}</div><div class="pin-lbl">${esc(vNome(v))}<i>${esc(a.mansione||'')}</i></div>`});
+}
+function puntoIcon(p){return L.divIcon({className:'vpin',iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-16],html:`<div class="pt">${TIPI_PUNTO[p.tipo][1]}</div><div class="pin-lbl">${esc(p.nome||TIPI_PUNTO[p.tipo][0])}</div>`});}
+function intervIcon(i){return L.divIcon({className:'vpin',iconSize:[34,34],iconAnchor:[17,17],popupAnchor:[0,-16],html:`<div class="iv ${i.esito!=='In corso'?'chiuso':''}"><span>${i.n}</span></div><div class="pin-lbl">${esc(i.ora)}<i>${esc(i.esito)}</i></div>`});}
+function rigaVolPopup(s,a){
+  const v=getVol(a.volId);
+  return `<div style="border-top:1px solid #eee;padding-top:4px;margin-top:4px;cursor:pointer" onclick="azioniVol('${a.id}')"><b>${nomeConStato(s,a)}</b>
+  <div class="small">${esc(a.mansione||'')}${a.radio?' · 📻 '+esc(a.radio):''}${v&&v.telefono?' · 📞 '+esc(v.telefono):''}</div></div>`;
+}
+function drawMarkers(){
+  if(!map)return;const s=svc();
+  Object.values(markers).forEach(m=>m.remove());markers={};
+  const add=(key,pos,icon,popup,obj,z=0)=>{
+    const m=L.marker(pos,{icon,draggable:true,autoPan:true,zIndexOffset:z}).addTo(map);
+    m.bindPopup(popup,{maxWidth:270});
+    m.on('dragend',()=>{const ll=m.getLatLng();obj.pos=[ll.lat,ll.lng];save();});
+    markers[key]=m;
+  };
+  s.disegni.forEach(g=>{
+    if(!g.pts||g.pts.length<2)return;
+    const lay=g.tipo==='zona'?L.polygon(g.pts,{color:g.colore,weight:3,fillOpacity:.15}):L.polyline(g.pts,{color:g.colore,weight:5,dashArray:g.tratt?'10 8':null});
+    lay.addTo(map).bindTooltip(esc(g.nome),{permanent:true,direction:'center',className:'zlbl'});
+    lay.bindPopup(()=>`<div class="pop"><b>${g.tipo==='zona'?'▭ Zona':'〰 Percorso'}: ${esc(g.nome)}</b><div style="margin-top:6px"><button class="btn sm sec" onclick="disegnoDialog('${g.id}')">Modifica</button></div></div>`);
+    markers['g_'+g.id]=lay;
+  });
+  s.punti.forEach(p=>{if(p.pos)add('pt_'+p.id,p.pos,puntoIcon(p),()=>`<div class="pop"><b>${TIPI_PUNTO[p.tipo][1]} ${esc(p.nome||TIPI_PUNTO[p.tipo][0])}</b><div class="small mut">${esc(TIPI_PUNTO[p.tipo][0])}</div>${p.note?`<div class="small">${esc(p.note)}</div>`:''}<div style="margin-top:6px"><button class="btn sm sec" onclick="puntoDialog(svc().punti.find(x=>x.id==='${p.id}'))">Modifica</button></div></div>`,p,100);});
+  s.postazioni.forEach(p=>{
+    if(!p.pos)return;const l=s.assegnazioni.filter(a=>a.postId===p.id);
+    add('p_'+p.id,p.pos,gruppoIcon(s,'📌 '+esc(p.nome),l),()=>`<div class="pop" style="max-height:260px;overflow:auto"><b>📌 ${esc(p.nome)}</b> <span class="mut small">(${l.length})</span>${l.map(a=>rigaVolPopup(s,a)).join('')}
+      <div style="margin-top:8px;display:flex;gap:6px;flex-wrap:wrap"><button class="btn sm" onclick="addQui('p','${p.id}')">＋ Volontario qui</button><button class="btn sm sec" onclick="editPost('${p.id}')">Rinomina</button></div></div>`,p,300);
+  });
+  s.mezzi.forEach(sm=>{
+    if(!sm.pos)return;const mz=getMezzo(sm.mezzoId),l=s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id);
+    add('m_'+sm.id,sm.pos,gruppoIcon(s,mzEmoji(mz)+' '+esc(mzNome(mz)),l,'mz'),()=>`<div class="pop" style="max-height:260px;overflow:auto"><b>${mzEmoji(mz)} ${esc(mzNome(mz))}</b> <span class="mut small">${esc(mz?mz.tipo:'')}${mz&&mz.targa?' · '+esc(mz.targa):''}</span>${l.map(a=>rigaVolPopup(s,a)).join('')||'<div class="small mut">Nessun equipaggio</div>'}
+      <div style="margin-top:8px"><button class="btn sm sec" onclick="mezzoSvcDialog(svc().mezzi.find(x=>x.id==='${sm.id}'))">Equipaggio</button></div></div>`,sm,400);
+  });
+  s.assegnazioni.forEach(a=>{
+    if(luogoDi(s,a).k!=='man'||!a.pos)return;
+    add(a.id,a.pos,volIcon(s,a),()=>`<div class="pop"><div class="mut small">✋ Posizionato a mano</div>${rigaVolPopup(s,a)}<div style="margin-top:6px"><button class="btn sm sec" onclick="setPlacing({k:'ass',id:'${a.id}'})">Sposta</button></div></div>`,a,200);
+  });
+  s.interventi.forEach(i=>{if(i.pos)add('i_'+i.id,i.pos,intervIcon(i),()=>popupInterv(s,i),i,600);});
+}
+function fitAll(msg){
+  const s=svc();if(!map)return;
+  const pts=[...s.postazioni,...s.mezzi,...s.punti,...s.interventi].filter(p=>p.pos).map(p=>p.pos)
+    .concat(s.assegnazioni.filter(a=>luogoDi(s,a).k==='man'&&a.pos).map(a=>a.pos)).concat(...s.disegni.map(g=>g.pts||[]));
+  if(pts.length)map.fitBounds(L.latLngBounds(pts).pad(.3),{maxZoom:s.mappaTipo==='reale'?19:2});
+  else if(s.mappaTipo==='planimetria'&&s.planimetria)map.fitBounds([[0,0],[s.planimetria.h,s.planimetria.w]]);
+  else if(msg)toast('Non c’è ancora niente sulla mappa');
+}
+function vaiSu(ll,key){
+  const s=svc();if(!map)return;map.setView(ll,Math.max(map.getZoom(),s.mappaTipo==='reale'?18:0));
+  markers[key]&&markers[key].openPopup&&markers[key].openPopup();
+  if(innerWidth<900)document.querySelector('.mapwrap').scrollIntoView({behavior:'smooth'});
+}
+function mostraOPosiziona(k,o,key){
+  if(!map){toast('Mappa non disponibile');return;}
+  if(o.pos)vaiSu(o.pos,key);else setPlacing({k,id:o.id});
+}
+window.setPlacing=function(pl){
+  placing=pl;const s=svc();
+  if(map)map.closePopup();
+  if(!pl){$('#pbar').innerHTML='';if(map)map.getContainer().style.cursor='';return;}
+  let txt;
+  if(pl.k==='new')txt={post:'dove vuoi la <b>nuova postazione</b>',punto:'dove vuoi il <b>'+esc(TIPI_PUNTO[pl.tipo||'altro'][0])+'</b>',interv:'dove è l’<b>intervento</b>',mezzo:'dove si trova il <b>mezzo</b>'}[pl.what];
+  else txt='dove si trova <b>'+esc(nomeOggetto(s,pl.k,pl.id))+'</b>';
+  $('#pbar').innerHTML=`<div class="placing-bar">📍 Tocca la mappa ${txt}<button onclick="setPlacing(null)">Annulla</button></div>`;
+  if(map)map.getContainer().style.cursor='crosshair';
+  if(innerWidth<900)document.querySelector('.mapwrap').scrollIntoView({behavior:'smooth'});
+};
+window.addQui=(k,id)=>{if(map)map.closePopup();assDialog(null,k==='p'?id:null);};
+window.editPost=id=>{if(map)map.closePopup();postDialog(postOf(svc(),id));};
+
+function menuAggiungi(){
+  if(!map){toast('Mappa non disponibile');return;}
+  dialog(`<h2>Cosa vuoi mettere sulla mappa?</h2><div class="addgrid">
+    <button data-w="post"><span>📌</span>Postazione</button>
+    <button data-w="mezzo"><span>🚑</span>Mezzo</button>
+    <button data-w="punto"><span>🏥</span>Punto fisso<small class="mut">PMA, ingresso, uscita…</small></button>
+    <button data-w="interv"><span>⚠️</span>Intervento</button>
+    <button data-w="zona"><span>▭</span>Zona</button>
+    <button data-w="percorso"><span>〰</span>Percorso / via di fuga</button>
+  </div><div class="acts"><button class="btn sec" data-close>Annulla</button></div>`,(d,close)=>{
+    d.querySelectorAll('[data-w]').forEach(b=>b.onclick=()=>{close();const w=b.dataset.w;
+      if(w==='zona'||w==='percorso')iniziaDisegno(w);
+      else if(w==='punto')scegliTipoPunto(t=>setPlacing({k:'new',what:'punto',tipo:t}));
+      else if(w==='mezzo')mezzoSvcDialog();
+      else setPlacing({k:'new',what:w});});
+  });
+}
+function scegliTipoPunto(cb){
+  dialog(`<h2>Che tipo di punto?</h2><div class="addgrid">${Object.entries(TIPI_PUNTO).map(([k,[l,e]])=>`<button data-t="${k}"><span>${e}</span>${l}</button>`).join('')}</div><div class="acts"><button class="btn sec" data-close>Annulla</button></div>`,(d,close)=>{
+    d.querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>{close();cb(b.dataset.t);});
+  });
+}
+
+/* ---- disegno zone e percorsi ---- */
+function iniziaDisegno(tipo){
+  setPlacing(null);drawing={tipo,pts:[],lay:null};
+  map.getContainer().style.cursor='crosshair';aggiornaDisegno();
+  if(innerWidth<900)document.querySelector('.mapwrap').scrollIntoView({behavior:'smooth'});
+}
+function aggiornaDisegno(){
+  if(!drawing)return;
+  if(drawing.lay)drawing.lay.remove();
+  if(drawing.pts.length)drawing.lay=(drawing.tipo==='zona'&&drawing.pts.length>2?L.polygon(drawing.pts,{color:'#111',dashArray:'6 6',fillOpacity:.1}):L.polyline(drawing.pts,{color:'#111',dashArray:'6 6'})).addTo(map);
+  const min=drawing.tipo==='zona'?3:2;
+  $('#pbar').innerHTML=`<div class="placing-bar">✏️ Tocca i punti ${drawing.tipo==='zona'?'del contorno della zona':'del percorso'} (${drawing.pts.length})
+    <button onclick="drawUndo()">↶</button><button onclick="drawFine()" ${drawing.pts.length<min?'disabled style="opacity:.4"':''}>Fine</button><button onclick="drawStop()">Annulla</button></div>`;
+}
+window.drawUndo=()=>{if(drawing){drawing.pts.pop();aggiornaDisegno();}};
+window.drawStop=()=>{if(drawing&&drawing.lay)drawing.lay.remove();drawing=null;$('#pbar').innerHTML='';if(map)map.getContainer().style.cursor='';};
+window.drawFine=()=>{const d=drawing;drawStop();const g={id:uid(),tipo:d.tipo,pts:d.pts,nome:'',colore:d.tipo==='zona'?'#7c3aed':'#15803d',tratt:false};disegnoDialog(null,g);};
+window.disegnoDialog=(id,nuovoG)=>{
+  const s=svc();const g=nuovoG||s.disegni.find(x=>x.id===id);if(map)map.closePopup();
+  dialog(`<h2>${g.tipo==='zona'?'Zona':'Percorso'}</h2><form id="fg">
+    <label class="f">Nome<input name="nome" required value="${esc(g.nome)}" placeholder="${g.tipo==='zona'?'es. Settore ospiti, Area PMA':'es. Via di fuga Curva Sud'}"></label>
+    <label class="f">Colore</label><div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${COLORI.map(c=>`<button type="button" data-c="${c}" style="width:34px;height:34px;border-radius:50%;background:${c};border:3px solid ${c===g.colore?'#111':'#fff'};box-shadow:0 0 0 1px #ccc;cursor:pointer"></button>`).join('')}</div>
+    ${g.tipo==='percorso'?`<label class="chk"><input type="checkbox" name="tr" ${g.tratt?'checked':''}> Linea tratteggiata</label>`:''}
+    <div class="acts">${nuovoG?'':'<button type="button" class="btn ghost" id="delG" style="margin-right:auto">Elimina</button>'}<button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    let col=g.colore;
+    d.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{col=b.dataset.c;d.querySelectorAll('[data-c]').forEach(x=>x.style.borderColor=x.dataset.c===col?'#111':'#fff');});
+    const del=d.querySelector('#delG');if(del)del.onclick=()=>{s.disegni=s.disegni.filter(x=>x!==g);close();aggiorna();};
+    d.querySelector('#fg').onsubmit=e=>{e.preventDefault();const f=e.target;g.nome=f.nome.value.trim();g.colore=col;if(f.tr)g.tratt=f.tr.checked;if(nuovoG)s.disegni.push(g);close();aggiorna();};
+  });
+};
+
+/* ---- stato e azioni volontario ---- */
+function cambiaStato(s,a,st,silenzioso){
+  if(a.stato===st)return;a.stato=st;
+  logD(s,`${vNome(getVol(a.volId))} → ${STATI[st][0].toLowerCase()}`);
+  if(!silenzioso)aggiorna();
+}
+window.azioniVol=id=>{
+  const s=svc(),a=assOf(s,id);if(!a)return;const v=getVol(a.volId),lu=luogoDi(s,a);
+  if(map)map.closePopup();
+  sheet(esc(vNome(v)),[
+    ...contattiItems(v),
+    {t:'📍 '+(lu.pos?'Mostra sulla mappa':'Metti sulla mappa'),fn:()=>{if(lu.k==='post')mostraOPosiziona('post',lu.o,'p_'+lu.o.id);else if(lu.k==='mezzo')mostraOPosiziona('mezzo',lu.o,'m_'+lu.o.id);else mostraOPosiziona('ass',a,a.id);}},
+    {t:'✏️ Modifica',fn:()=>assDialog(a)}
+  ],`<p class="small mut" style="margin-top:-6px">${esc(a.mansione||'')} · ${esc(lu.l)}${a.radio?' · 📻 '+esc(a.radio):''}</p>
+    <div class="sts">${Object.entries(STATI).map(([k,[l,e]])=>`<button class="chip st-${k} ${a.stato===k?'on':''}" data-st="${k}">${e} ${l}</button>`).join('')}</div>`);
+  const d=document.querySelector('.ovl:last-child .dlg');
+  d.querySelectorAll('[data-st]').forEach(b=>b.onclick=()=>{cambiaStato(s,a,b.dataset.st);d.querySelectorAll('[data-st]').forEach(x=>x.classList.toggle('on',x===b));toast(vNome(v)+': '+STATI[b.dataset.st][0].toLowerCase());});
+};
+
+/* ================= PANNELLO ================= */
+function renderPanel(){
+  const s=svc();if(!s)return;
+  const nw=controlli(s).length;
+  document.querySelectorAll('.ptabs button').forEach(b=>{b.classList.toggle('on',b.dataset.t===pTab);if(b.dataset.t==='info')b.innerHTML='Riepilogo'+(nw?`<span class="bdg">${nw}</span>`:'');});
+  const tb=document.querySelector('.ptabs button.on');if(tb)tb.scrollIntoView({block:'nearest',inline:'nearest'});
+  const pb=$('#pbody');
+  ({vol:panVol,post:panPost,mezzi:panMezzi,punti:panPunti,interv:panInterv,diario:panDiario,sq:panSq,info:panInfo})[pTab](s,pb);
+}
+function panVol(s,pb){
+  const daPos=s.assegnazioni.filter(a=>!posizionato(s,a)).length;
+  const cs={};s.assegnazioni.forEach(a=>cs[a.stato]=(cs[a.stato]||0)+1);
+  const gruppi=s.squadre.map(q=>({q,l:s.assegnazioni.filter(a=>a.squadraId===q.id)}));
+  const senza=s.assegnazioni.filter(a=>!sqOf(s,a.squadraId));
+  if(senza.length)gruppi.push({q:{nome:'Senza squadra',colore:'#6b7280'},l:senza});
+  pb.innerHTML=`<button class="btn full" id="addA">＋ Aggiungi volontario al servizio</button>
+  <p class="mut small" style="margin:8px 2px">${s.assegnazioni.length} volontari${daPos?` · <b style="color:var(--warn)">${daPos} non sulla mappa</b>`:s.assegnazioni.length?' · tutti sulla mappa ✅':''}<br>${Object.entries(STATI).filter(([k])=>cs[k]).map(([k,[l,e]])=>`${e} ${cs[k]} ${l.toLowerCase()}`).join(' · ')}</p>
+  <div class="card" style="padding:10px 12px">${s.assegnazioni.length?gruppi.filter(g=>g.l.length).map(g=>`
+    <div class="squad-h"><span class="dot" style="background:${g.q.colore}"></span>${esc(g.q.nome)} <span class="mut small">(${g.l.length})</span></div>
+    ${g.l.sort((x,y)=>vNome(getVol(x.volId)).localeCompare(vNome(getVol(y.volId)),'it')).map(a=>{const v=getVol(a.volId),lu=luogoDi(s,a);return`
+    <div class="list-item">
+      <div class="grow" data-av="${a.id}" style="cursor:pointer"><div class="title">${esc(vNome(v))}</div>
+        <div class="small mut">${esc(a.mansione||'—')} · ${esc(lu.l)}</div>
+        <div class="small mut">${a.inizio||a.fine?'🕒 '+esc(a.inizio||'?')+'–'+esc(a.fine||'?')+' ':''}${v&&v.telefono?'📞 '+esc(v.telefono)+' ':''}${a.radio?'📻 '+esc(a.radio):''}</div>
+        ${lu.pos?'':`<span class="tag warn">${lu.k==='man'?'da posizionare':(lu.k==='post'?'postazione':'mezzo')+' non sulla mappa'}</span>`}</div>
+      <button class="chip st-${a.stato}" data-av="${a.id}" title="${STATI[a.stato][0]}">${STATI[a.stato][1]}</button>
+      <button class="ib" data-pos="${a.id}" style="${lu.pos?'':'background:#fef3c7'}">📍</button>
+    </div>`}).join('')}`).join(''):'<div class="empty">Nessun volontario in questo servizio.</div>'}</div>
+  <p class="mut small" style="text-align:center">Tocca un volontario per chiamarlo, scrivergli o cambiargli lo stato.</p>`;
+  $('#addA').onclick=()=>assDialog();
+  pb.querySelectorAll('[data-av]').forEach(b=>b.onclick=()=>azioniVol(b.dataset.av));
+  pb.querySelectorAll('[data-pos]').forEach(b=>b.onclick=()=>{
+    const a=assOf(s,b.dataset.pos),lu=luogoDi(s,a);
+    if(lu.k==='post')mostraOPosiziona('post',lu.o,'p_'+lu.o.id);else if(lu.k==='mezzo')mostraOPosiziona('mezzo',lu.o,'m_'+lu.o.id);else mostraOPosiziona('ass',a,a.id);
+  });
+}
+function panPost(s,pb){
+  pb.innerHTML=`<button class="btn full" id="addP">📌 Nuova postazione</button>
+  <p class="mut small" style="margin:8px 2px">Metti prima le postazioni sulla mappa: i volontari associati ci compariranno sopra da soli.</p>
+  <div class="card">${s.postazioni.length?s.postazioni.map(p=>{const n=s.assegnazioni.filter(a=>a.postId===p.id).length;return`
+    <div class="list-item"><div class="grow"><div class="title">📌 ${esc(p.nome)}</div>
+    <div class="small mut">${n} volontari</div>${p.pos?'':'<span class="tag warn">da mettere sulla mappa</span>'}</div>
+    <button class="ib" data-pp="${p.id}" style="${p.pos?'':'background:#fef3c7'}">📍</button>
+    <button class="ib" data-ap="${p.id}" title="Aggiungi volontario qui">＋</button>
+    <button class="ib" data-ep="${p.id}">✏️</button><button class="ib" data-dp="${p.id}">🗑</button></div>`}).join(''):'<div class="empty">Nessuna postazione.<br>Premi “Nuova postazione” oppure ➕ sulla mappa.</div>'}</div>`;
+  $('#addP').onclick=()=>postDialog();
+  pb.querySelectorAll('[data-pp]').forEach(b=>b.onclick=()=>{const p=postOf(s,b.dataset.pp);mostraOPosiziona('post',p,'p_'+p.id);});
+  pb.querySelectorAll('[data-ap]').forEach(b=>b.onclick=()=>assDialog(null,b.dataset.ap));
+  pb.querySelectorAll('[data-ep]').forEach(b=>b.onclick=()=>postDialog(postOf(s,b.dataset.ep)));
+  pb.querySelectorAll('[data-dp]').forEach(b=>b.onclick=async()=>{
+    const p=postOf(s,b.dataset.dp),l=s.assegnazioni.filter(a=>a.postId===p.id);
+    if(await ask(`Eliminare la postazione “${p.nome}”?${l.length?` I suoi ${l.length} volontari passeranno a “manuale”.`:''}`,'Elimina')){
+      l.forEach(a=>{a.postId=null;a.pos=p.pos;});s.postazioni=s.postazioni.filter(x=>x!==p);aggiorna();}
+  });
+}
+function panMezzi(s,pb){
+  pb.innerHTML=`<button class="btn full" id="addM">🚑 Aggiungi mezzo al servizio</button>
+  <div class="card" style="margin-top:12px">${s.mezzi.length?s.mezzi.map(sm=>{const mz=getMezzo(sm.mezzoId),l=s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id);return`
+    <div class="list-item"><div style="font-size:26px">${mzEmoji(mz)}</div><div class="grow"><div class="title">${esc(mzNome(mz))}</div>
+    <div class="small mut">${esc(mz?mz.tipo:'')}${mz&&mz.targa?' · '+esc(mz.targa):''}</div>
+    <div class="small">${l.length?l.map(a=>esc(vNome(getVol(a.volId)))+(a.mansione?' <span class="mut">('+esc(a.mansione)+')</span>':'')).join(', '):'<span class="mut">nessun equipaggio</span>'}</div>
+    ${sm.pos?'':'<span class="tag warn">da mettere sulla mappa</span>'}</div>
+    <button class="ib" data-pm="${sm.id}" style="${sm.pos?'':'background:#fef3c7'}">📍</button><button class="ib" data-em="${sm.id}">✏️</button><button class="ib" data-dm="${sm.id}">🗑</button></div>`}).join(''):'<div class="empty">Nessun mezzo in questo servizio.</div>'}</div>
+  <p class="mut small" style="text-align:center">I mezzi si inseriscono una volta sola nella sezione “Mezzi” in basso nella schermata principale.</p>`;
+  $('#addM').onclick=()=>mezzoSvcDialog();
+  pb.querySelectorAll('[data-pm]').forEach(b=>b.onclick=()=>{const m=smOf(s,b.dataset.pm);mostraOPosiziona('mezzo',m,'m_'+m.id);});
+  pb.querySelectorAll('[data-em]').forEach(b=>b.onclick=()=>mezzoSvcDialog(smOf(s,b.dataset.em)));
+  pb.querySelectorAll('[data-dm]').forEach(b=>b.onclick=async()=>{const m=smOf(s,b.dataset.dm);
+    if(await ask(`Togliere ${mzNome(getMezzo(m.mezzoId))} dal servizio? L’equipaggio passerà a “manuale”.`,'Togli')){
+      s.assegnazioni.forEach(a=>{if(a.mezzoSvcId===m.id){a.mezzoSvcId=null;a.pos=m.pos;}});s.mezzi=s.mezzi.filter(x=>x!==m);aggiorna();}});
+}
+function panPunti(s,pb){
+  pb.innerHTML=`<div class="row"><button class="btn grow" id="addPt">🏥 Punto fisso</button><button class="btn sec grow" id="addZ">▭ Zona</button><button class="btn sec grow" id="addPe">〰 Percorso</button></div>
+  <h3>Punti fissi</h3><div class="card">${s.punti.length?s.punti.map(p=>`<div class="list-item"><div style="font-size:24px">${TIPI_PUNTO[p.tipo][1]}</div><div class="grow"><div class="title">${esc(p.nome||TIPI_PUNTO[p.tipo][0])}</div><div class="small mut">${esc(TIPI_PUNTO[p.tipo][0])}</div>${p.pos?'':'<span class="tag warn">da mettere sulla mappa</span>'}</div>
+    <button class="ib" data-gp="${p.id}">📍</button><button class="ib" data-ept="${p.id}">✏️</button></div>`).join(''):'<div class="empty">Nessun punto fisso (PMA, ingressi, uscite, punti di raccolta…).</div>'}</div>
+  <h3>Zone e percorsi</h3><div class="card">${s.disegni.length?s.disegni.map(g=>`<div class="list-item"><span class="dot" style="background:${g.colore};width:20px;height:20px;border-radius:${g.tipo==='zona'?'4px':'50%'}"></span><div class="grow"><div class="title">${esc(g.nome)}</div><div class="small mut">${g.tipo==='zona'?'Zona':'Percorso'}</div></div>
+    <button class="ib" data-gg="${g.id}">📍</button><button class="ib" data-eg="${g.id}">✏️</button></div>`).join(''):'<div class="empty">Nessuna zona o percorso. Puoi disegnare settori, aree, vie di fuga…</div>'}</div>`;
+  const need=()=>{if(!map){toast('Mappa non disponibile');return false;}return true;};
+  $('#addPt').onclick=()=>{if(need())scegliTipoPunto(t=>setPlacing({k:'new',what:'punto',tipo:t}));};
+  $('#addZ').onclick=()=>{if(need())iniziaDisegno('zona');};
+  $('#addPe').onclick=()=>{if(need())iniziaDisegno('percorso');};
+  pb.querySelectorAll('[data-gp]').forEach(b=>b.onclick=()=>{const p=s.punti.find(x=>x.id===b.dataset.gp);mostraOPosiziona('punto',p,'pt_'+p.id);});
+  pb.querySelectorAll('[data-ept]').forEach(b=>b.onclick=()=>puntoDialog(s.punti.find(x=>x.id===b.dataset.ept)));
+  pb.querySelectorAll('[data-gg]').forEach(b=>b.onclick=()=>{const g=s.disegni.find(x=>x.id===b.dataset.gg);if(map){map.fitBounds(L.latLngBounds(g.pts).pad(.3));if(innerWidth<900)document.querySelector('.mapwrap').scrollIntoView({behavior:'smooth'});}});
+  pb.querySelectorAll('[data-eg]').forEach(b=>b.onclick=()=>disegnoDialog(b.dataset.eg));
+}
+function panInterv(s,pb){
+  const l=s.interventi.slice().sort((a,b)=>b.n-a.n);
+  const aperti=l.filter(i=>i.esito==='In corso').length;
+  pb.innerHTML=`<button class="btn full" id="addI">⚠️ Nuovo intervento</button>
+  <p class="mut small" style="margin:8px 2px">${l.length} interventi${aperti?` · <b style="color:#dc2626">${aperti} in corso</b>`:''}</p>
+  <div class="card">${l.length?l.map(i=>`<div class="list-item"><div class="iv ${i.esito!=='In corso'?'chiuso':''}" style="flex:none"><span>${i.n}</span></div>
+    <div class="grow" data-ei="${i.id}" style="cursor:pointer"><div class="title">${esc(i.ora)} · ${esc(i.descr||'Intervento')}</div>
+    <div class="small mut">${esc(i.esito)}${i.vol.length?' · '+i.vol.map(id=>{const a=assOf(s,id);return a?esc(vNome(getVol(a.volId))):''}).filter(Boolean).join(', '):''}${i.mezzo&&smOf(s,i.mezzo)?' · '+esc(mzNome(getMezzo(smOf(s,i.mezzo).mezzoId))):''}</div></div>
+    <button class="ib" data-gi="${i.id}" style="${i.pos?'':'background:#fef3c7'}">📍</button></div>`).join(''):'<div class="empty">Nessun intervento registrato.</div>'}</div>`;
+  $('#addI').onclick=()=>{if(map)setPlacing({k:'new',what:'interv'});else intervDialog();};
+  pb.querySelectorAll('[data-ei]').forEach(b=>b.onclick=()=>intervDialog(s.interventi.find(x=>x.id===b.dataset.ei)));
+  pb.querySelectorAll('[data-gi]').forEach(b=>b.onclick=()=>{const i=s.interventi.find(x=>x.id===b.dataset.gi);mostraOPosiziona('interv',i,'i_'+i.id);});
+}
+function panDiario(s,pb){
+  const l=s.diario.slice().sort((a,b)=>b.t-a.t);
+  const oggi=new Date().toDateString();
+  pb.innerHTML=`<form id="fd" class="row"><input class="search grow" style="margin:0" name="t" placeholder="Scrivi una nota (es. aperti i cancelli)"><button class="btn sm">Aggiungi</button></form>
+  <div class="card" style="margin-top:12px">${l.length?l.map(e=>`<div class="diar"><b>${new Date(e.t).toDateString()!==oggi?new Date(e.t).toLocaleDateString('it-IT',{day:'2-digit',month:'2-digit'})+'<br>':''}${ora(e.t)}</b><div class="grow">${esc(e.testo)}</div></div>`).join(''):'<div class="empty">Il diario si riempie da solo con i cambi di stato e gli interventi. Puoi anche scrivere delle note.</div>'}</div>`;
+  $('#fd').onsubmit=e=>{e.preventDefault();const t=e.target.t.value.trim();if(!t)return;logD(s,'📝 '+t);save();renderPanel();};
+}
+function panSq(s,pb){
+  pb.innerHTML=`<div class="card">${s.squadre.map(q=>`
+    <div class="list-item"><span class="dot" style="background:${q.colore};width:22px;height:22px"></span>
+    <div class="grow"><div class="title">${esc(q.nome)}</div><div class="small mut">${s.assegnazioni.filter(a=>a.squadraId===q.id).length} volontari${q.capo&&assOf(s,q.capo)?' · capo: '+esc(vNome(getVol(assOf(s,q.capo).volId))):''}</div></div>
+    <button class="ib" data-eq="${q.id}">✏️</button><button class="ib" data-dq="${q.id}">🗑</button></div>`).join('')||'<div class="empty">Nessuna squadra</div>'}</div>
+    <button class="btn full sec" id="addQ">＋ Nuova squadra</button>`;
+  $('#addQ').onclick=()=>sqDialog();
+  pb.querySelectorAll('[data-eq]').forEach(b=>b.onclick=()=>sqDialog(sqOf(s,b.dataset.eq)));
+  pb.querySelectorAll('[data-dq]').forEach(b=>b.onclick=async()=>{
+    const q=sqOf(s,b.dataset.dq);
+    if(await ask(`Eliminare “${q.nome}”? I suoi volontari resteranno nel servizio senza squadra.`,'Elimina')){
+      s.squadre=s.squadre.filter(x=>x!==q);s.assegnazioni.forEach(a=>{if(a.squadraId===q.id)a.squadraId=null;});aggiorna();}
+  });
+}
+/* ---- controllo ---- */
+function controlli(s){
+  const w=[];
+  const np=s.assegnazioni.filter(a=>!posizionato(s,a));
+  if(np.length)w.push(`📍 ${np.length} volontari non sono sulla mappa: ${np.slice(0,5).map(a=>vNome(getVol(a.volId))).join(', ')}${np.length>5?'…':''}`);
+  s.postazioni.forEach(p=>{
+    if(!s.assegnazioni.some(a=>a.postId===p.id))w.push(`📌 Postazione “${p.nome}” senza volontari`);
+    if(!p.pos)w.push(`📌 Postazione “${p.nome}” non è sulla mappa`);
+  });
+  s.mezzi.forEach(sm=>{
+    const mz=getMezzo(sm.mezzoId),l=s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id);
+    if(!l.length)w.push(`${mzEmoji(mz)} ${mzNome(mz)} senza equipaggio`);
+    else if(mz&&MEZZI_CON_AUTISTA.includes(mz.tipo)&&!l.some(a=>a.mansione==='Autista'))w.push(`${mzEmoji(mz)} ${mzNome(mz)}: nell’equipaggio manca l’autista`);
+    if(!sm.pos)w.push(`${mzEmoji(mz)} ${mzNome(mz)} non è sulla mappa`);
+  });
+  s.squadre.forEach(q=>{
+    const l=s.assegnazioni.filter(a=>a.squadraId===q.id);if(!l.length)return;
+    S.obbligatorie.forEach(m=>{if(!l.some(a=>a.mansione===m))w.push(`👥 ${q.nome}: manca “${m}”`);});
+  });
+  const senzaSq=s.assegnazioni.filter(a=>!sqOf(s,a.squadraId)).length;
+  if(senzaSq&&s.squadre.length)w.push(`👥 ${senzaSq} volontari senza squadra`);
+  const aperti=s.interventi.filter(i=>i.esito==='In corso').length;
+  if(aperti)w.push(`⚠️ ${aperti} interventi ancora in corso`);
+  return w;
+}
+function panInfo(s,pb){
+  const w=controlli(s);
+  const cm={};s.assegnazioni.forEach(a=>{const k=a.mansione||'Senza mansione';cm[k]=(cm[k]||0)+1;});
+  const cs={};s.assegnazioni.forEach(a=>cs[a.stato]=(cs[a.stato]||0)+1);
+  const lg=s.luogoId&&S.luoghi.find(l=>l.id===s.luogoId);
+  pb.innerHTML=`<div class="card"><h2 style="margin-top:0">${w.length?'⚠️ Da controllare':'✅ Tutto in ordine'}</h2>
+    ${w.length?w.map(x=>`<div class="warnl">${esc(x)}</div>`).join(''):'<p class="mut small">Postazioni, mezzi e squadre sono completi.</p>'}</div>
+  <div class="card"><h2 style="margin-top:0">Conteggio</h2>
+    <p class="small"><b>${s.assegnazioni.length}</b> volontari · <b>${s.postazioni.length}</b> postazioni · <b>${s.mezzi.length}</b> mezzi · <b>${s.squadre.length}</b> squadre</p>
+    <div class="cnt">${Object.entries(cm).sort((a,b)=>b[1]-a[1]).map(([k,n])=>`<span>${esc(k)}: <b>${n}</b></span>`).join('')}</div>
+    <div class="cnt" style="margin-top:8px">${Object.entries(STATI).map(([k,[l,e]])=>`<span>${e} ${l}: <b>${cs[k]||0}</b></span>`).join('')}</div></div>
+  <div class="card">
+    <div class="title" style="font-size:17px">${esc(s.nome)}</div>
+    <div class="mut">${esc(s.tipo)}${s.data?' · '+fmtData(s.data):''}</div>
+    ${s.luogo?`<div style="margin-top:6px">📍 ${esc(s.luogo)}</div>`:''}
+    <div style="margin-top:6px">${s.mappaTipo==='reale'?'🌍 Mappa reale':'📐 Planimetria'}${lg?' · luogo salvato: '+esc(lg.nome):''}</div>
+    ${s.note?`<p class="small" style="white-space:pre-wrap">${esc(s.note)}</p>`:''}
+    <div class="legend">${s.squadre.map(q=>`<span><span class="dot" style="background:${q.colore}"></span>${esc(q.nome)}</span>`).join('')}</div>
+    <div class="row" style="margin-top:12px;flex-wrap:wrap"><button class="btn sec sm" id="edS">✏️ Modifica dettagli / mappa</button><button class="btn sec sm" id="svL">💾 Salva come luogo</button></div>
+    <p class="small mut">“Salva come luogo” conserva mappa, postazioni, punti fissi e zone: al prossimo servizio nello stesso posto li ritrovi già pronti.</p>
+  </div>`;
+  $('#edS').onclick=()=>svcDialog(s);$('#svL').onclick=()=>salvaLuogo(s);
+}
+function salvaLuogo(s){
+  const es=s.luogoId&&S.luoghi.find(l=>l.id===s.luogoId);
+  const dati=()=>({mappaTipo:s.mappaTipo,planimetria:s.planimetria?clone(s.planimetria):null,view:s.view?clone(s.view):null,base:s.base,
+    postazioni:s.postazioni.map(p=>({nome:p.nome,pos:p.pos})),punti:clone(s.punti),disegni:clone(s.disegni)});
+  dialog(`<h2>Salva come luogo</h2><form id="fl">
+    ${es?`<label class="f">Cosa vuoi fare?<select name="mode"><option value="upd">Aggiorna “${esc(es.nome)}”</option><option value="new">Salva come nuovo luogo</option></select></label>`:''}
+    <label class="f" id="lnw">Nome del luogo<input name="nome" value="${esc(s.luogo||s.nome)}" placeholder="es. Stadio Via del Mare"></label>
+    <p class="small mut">Verranno salvati: la mappa, ${s.postazioni.length} postazioni, ${s.punti.length} punti fissi e ${s.disegni.length} zone/percorsi. I volontari no.</p>
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fl');
+    const upd=()=>{d.querySelector('#lnw').style.display=f.mode&&f.mode.value==='upd'?'none':'';};if(f.mode)f.mode.onchange=upd;upd();
+    f.onsubmit=e=>{e.preventDefault();
+      if(f.mode&&f.mode.value==='upd'){Object.assign(es,dati());toast('✅ Luogo aggiornato');}
+      else{const n=f.nome.value.trim();if(!n){toast('Scrivi il nome del luogo');return;}const l=Object.assign({id:uid(),nome:n},dati());S.luoghi.push(l);s.luogoId=l.id;toast('✅ Luogo salvato: lo trovi quando crei un nuovo servizio');}
+      save();close();renderPanel();};
+  });
+}
+
+/* ================= FINESTRE DEL SERVIZIO ================= */
+function postSelectHtml(s){
+  const usati=new Set(s.postazioni.map(p=>p.nome.toLowerCase()));
+  const altri=S.nomiPost.filter(n=>!usati.has(n.toLowerCase()));
+  return `<option value="__new">＋ Nuova postazione…</option>
+  ${s.postazioni.length?`<optgroup label="Postazioni di questo servizio">${s.postazioni.map(p=>`<option value="p:${p.id}">📌 ${esc(p.nome)}${p.pos?'':' (non ancora sulla mappa)'}</option>`).join('')}</optgroup>`:''}
+  ${s.mezzi.length?`<optgroup label="Mezzi di questo servizio">${s.mezzi.map(m=>{const mz=getMezzo(m.mezzoId);return`<option value="m:${m.id}">${mzEmoji(mz)} ${esc(mzNome(mz))}</option>`}).join('')}</optgroup>`:''}
+  ${altri.length?`<optgroup label="Postazioni memorizzate">${altri.map(n=>`<option value="n:${esc(n)}">📌 ${esc(n)}</option>`).join('')}</optgroup>`:''}`;
+}
+function postDialog(p,presetPos){
+  const s=svc(),nuovo=!p;
+  const usati=new Set(s.postazioni.map(x=>x.nome.toLowerCase()));
+  const altri=S.nomiPost.filter(n=>!usati.has(n.toLowerCase()));
+  dialog(`<h2>${nuovo?'Nuova postazione':'Rinomina postazione'}</h2><form id="fp">
+    ${nuovo&&altri.length?`<label class="f">Scegli dall’elenco<select name="sel"><option value="__new">＋ Nuova postazione…</option>${altri.map(n=>`<option>${esc(n)}</option>`).join('')}</select></label>`:''}
+    <label class="f" id="pnw">Nome della postazione<input name="nome" value="${esc(p?p.nome:'')}" placeholder="es. Ingresso Curva Nord, Tribuna est"></label>
+    ${nuovo&&!presetPos?'<p class="small mut">Dopo il salvataggio tocca la mappa nel punto della postazione.</p>':''}
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">${nuovo?(presetPos?'Crea postazione':'Crea e metti sulla mappa'):'Salva'}</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fp');
+    const upd=()=>{d.querySelector('#pnw').style.display=(!f.sel||f.sel.value==='__new')?'':'none';};
+    if(f.sel)f.sel.onchange=upd;upd();
+    f.onsubmit=e=>{
+      e.preventDefault();
+      const nome=(f.sel&&f.sel.value!=='__new'?f.sel.value:f.nome.value).trim();
+      if(!nome){toast('Scrivi il nome della postazione');return;}
+      if(s.postazioni.some(x=>x!==p&&x.nome.toLowerCase()===nome.toLowerCase())){toast('Esiste già una postazione con questo nome');return;}
+      if(nuovo){p={id:uid(),nome,pos:presetPos||null};s.postazioni.push(p);}else p.nome=nome;
+      memorizzaNome(nome);close();aggiorna();
+      if(nuovo&&!p.pos&&map)setPlacing({k:'post',id:p.id});
+    };
+  });
+}
+function puntoDialog(p,presetPos,tipo){
+  const s=svc(),nuovo=!p;if(map)map.closePopup();
+  p=p||{id:uid(),tipo:tipo||'altro',nome:'',note:'',pos:presetPos||null};
+  dialog(`<h2>${TIPI_PUNTO[p.tipo][1]} ${nuovo?'Nuovo punto fisso':'Punto fisso'}</h2><form id="fpt">
+    <label class="f">Tipo<select name="tipo">${Object.entries(TIPI_PUNTO).map(([k,[l,e]])=>`<option value="${k}" ${k===p.tipo?'selected':''}>${e} ${l}</option>`).join('')}</select></label>
+    <label class="f">Nome (facoltativo)<input name="nome" value="${esc(p.nome)}" placeholder="es. Cancello 4, PMA Tribuna"></label>
+    <label class="f">Note<input name="note" value="${esc(p.note)}"></label>
+    <div class="acts">${nuovo?'':'<button type="button" class="btn ghost" id="delPt" style="margin-right:auto">Elimina</button><button type="button" class="btn sec" id="movPt">Sposta</button>'}<button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fpt');
+    const del=d.querySelector('#delPt');if(del)del.onclick=()=>{s.punti=s.punti.filter(x=>x!==p);close();aggiorna();};
+    const mov=d.querySelector('#movPt');if(mov)mov.onclick=()=>{close();setPlacing({k:'punto',id:p.id});};
+    f.onsubmit=e=>{e.preventDefault();Object.assign(p,{tipo:f.tipo.value,nome:f.nome.value.trim(),note:f.note.value.trim()});if(nuovo)s.punti.push(p);close();aggiorna();if(!p.pos&&map)setPlacing({k:'punto',id:p.id});};
+  });
+}
+window.puntoDialog=puntoDialog;
+function mezzoSvcDialog(sm,presetPos){
+  const s=svc(),nuovo=!sm;if(map)map.closePopup();
+  const usati=new Set(s.mezzi.filter(x=>x!==sm).map(x=>x.mezzoId));
+  const disp=S.mezzi.filter(m=>!usati.has(m.id));
+  const mz=sm&&getMezzo(sm.mezzoId);
+  dialog(`<h2>${nuovo?'Aggiungi mezzo al servizio':mzEmoji(mz)+' '+esc(mzNome(mz))}</h2><form id="fms">
+    ${nuovo?`<label class="f">Mezzo<select name="mz"><option value="">— scegli —</option>${disp.map(m=>`<option value="${m.id}">${mzEmoji(m)} ${esc(mzNome(m))}${m.targa?' ('+esc(m.targa)+')':''}</option>`).join('')}<option value="__new">＋ Nuovo mezzo (lo aggiungo anche ai mezzi del comitato)</option></select></label>`:''}
+    <label class="f">Equipaggio</label>
+    <div style="max-height:260px;overflow:auto;margin-bottom:6px">${s.assegnazioni.length?sortVolAss(s).map(a=>{const lu=luogoDi(s,a);return`<label class="chk"><input type="checkbox" value="${a.id}" ${sm&&a.mezzoSvcId===sm.id?'checked':''}><span class="grow">${esc(vNome(getVol(a.volId)))} <span class="small mut">${esc(a.mansione||'')}${lu.k!=='man'&&!(sm&&a.mezzoSvcId===sm.id)?' · ora: '+esc(lu.l):''}</span></span></label>`}).join(''):'<p class="small mut">Aggiungi prima i volontari al servizio.</p>'}</div>
+    <p class="small mut">Chi è nell’equipaggio compare sulla mappa insieme al mezzo.</p>
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">${nuovo?(presetPos?'Aggiungi':'Aggiungi e metti sulla mappa'):'Salva'}</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fms');
+    const fine=mzId=>{
+      if(nuovo){sm={id:uid(),mezzoId:mzId,pos:presetPos||null};s.mezzi.push(sm);}
+      const sel=new Set([...f.querySelectorAll('.chk input:checked')].map(c=>c.value));
+      s.assegnazioni.forEach(a=>{
+        if(sel.has(a.id)){if(a.mezzoSvcId!==sm.id){a.mezzoSvcId=sm.id;a.postId=null;}}
+        else if(a.mezzoSvcId===sm.id){a.mezzoSvcId=null;a.pos=null;}
+      });
+      close();aggiorna();
+      if(!sm.pos&&map)setPlacing({k:'mezzo',id:sm.id});
+    };
+    f.onsubmit=e=>{e.preventDefault();
+      if(!nuovo)return fine();
+      if(f.mz.value==='__new'){close();mezzoRubDialog(null,m=>{const nsm={id:uid(),mezzoId:m.id,pos:presetPos||null};s.mezzi.push(nsm);save();drawMarkers();renderPanel();mezzoSvcDialog(nsm);});return;}
+      if(!f.mz.value){toast('Scegli un mezzo');return;}
+      fine(f.mz.value);
+    };
+  });
+}
+window.mezzoSvcDialog=mezzoSvcDialog;
+const sortVolAss=s=>s.assegnazioni.slice().sort((x,y)=>vNome(getVol(x.volId)).localeCompare(vNome(getVol(y.volId)),'it'));
+function sqDialog(q){
+  const s=svc(),nuovo=!q;
+  q=q||{id:uid(),nome:'Squadra '+(s.squadre.length+1),colore:COLORI.find(c=>!s.squadre.some(x=>x.colore===c))||COLORI[s.squadre.length%COLORI.length],capo:''};
+  const membri=s.assegnazioni.filter(a=>a.squadraId===q.id);
+  dialog(`<h2>${nuovo?'Nuova squadra':'Modifica squadra'}</h2><form id="fq">
+    <label class="f">Nome squadra<input name="nome" required value="${esc(q.nome)}" placeholder="es. Squadra Curva Nord / Alpha 1"></label>
+    <label class="f">Colore sulla mappa</label>
+    <div style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px">${COLORI.map(c=>`<button type="button" data-c="${c}" style="width:36px;height:36px;border-radius:50%;background:${c};border:3px solid ${c===q.colore?'#111':'#fff'};box-shadow:0 0 0 1px #ccc;cursor:pointer"></button>`).join('')}</div>
+    ${nuovo?'':`<label class="f">Capo squadra<select name="capo"><option value="">—</option>${membri.map(a=>`<option value="${a.id}" ${a.id===q.capo?'selected':''}>${esc(vNome(getVol(a.volId)))}</option>`).join('')}</select></label>`}
+    <div class="acts"><button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    let col=q.colore;
+    d.querySelectorAll('[data-c]').forEach(b=>b.onclick=()=>{col=b.dataset.c;d.querySelectorAll('[data-c]').forEach(x=>x.style.borderColor=x.dataset.c===col?'#111':'#fff');});
+    const f=d.querySelector('#fq');
+    f.onsubmit=e=>{e.preventDefault();q.nome=f.nome.value.trim();q.colore=col;
+      if(f.capo){q.capo=f.capo.value;const a=assOf(s,q.capo);if(a&&!a.mansione)a.mansione='Capo squadra';}
+      if(nuovo)s.squadre.push(q);close();aggiorna();};
+  });
+}
+window.editAss=id=>{const s=svc();if(map)map.closePopup();assDialog(assOf(s,id));};
+function assDialog(a,presetPost){
+  const s=svc(),nuovo=!a;if(map)map.closePopup();
+  a=a||{id:uid(),volId:'',mansione:'',squadraId:(s.squadre[0]||{}).id||null,postId:presetPost||(s.postazioni[0]||{}).id||null,mezzoSvcId:null,stato:'post',radio:'',inizio:'',fine:'',note:'',pos:null};
+  const giaIn=new Set(s.assegnazioni.filter(x=>x!==a).map(x=>x.volId));
+  const opts=sortVol(S.volontari).filter(v=>!giaIn.has(v.id));
+  const v0=getVol(a.volId);
+  const selPost=postOf(s,a.postId)?'p:'+a.postId:smOf(s,a.mezzoSvcId)?'m:'+a.mezzoSvcId:'__man';
+  dialog(`<h2>${nuovo?'Aggiungi volontario':'Modifica volontario in servizio'}</h2><form id="fa">
+    ${nuovo?`<label class="f">Volontario<select name="vol"><option value="">— scegli dalla rubrica —</option>${opts.map(v=>`<option value="${v.id}">${esc(v.cognome)} ${esc(v.nome)}${v.mansione?' ('+esc(v.mansione)+')':''}</option>`).join('')}<option value="__new">＋ Nuovo volontario (non in rubrica)</option></select></label>
+    <div id="nv" style="display:none"><div class="two"><label class="f">Nome<input name="nome"></label><label class="f">Cognome<input name="cognome"></label></div></div>`
+    :`<div class="title" style="margin-bottom:10px">${esc(vNome(v0))}</div>`}
+    <label class="f">Postazione<select name="post"><option value="__man">✋ Manuale (lo posiziono io sulla mappa)</option>${postSelectHtml(s)}</select></label>
+    <label class="f" id="npw" style="display:none">Nome della nuova postazione<input name="npost" placeholder="es. Ingresso Curva Nord"></label>
+    <div class="two">
+      <label class="f">Mansione<select name="mansione">${mansOpts(a.mansione)}</select></label>
+      <label class="f">Squadra<select name="sq"><option value="">— nessuna —</option>${s.squadre.map(q=>`<option value="${q.id}" ${q.id===a.squadraId?'selected':''}>${esc(q.nome)}</option>`).join('')}</select></label>
+    </div>
+    <div class="two">
+      <label class="f">Telefono<input name="tel" type="tel" value="${esc(v0?v0.telefono:'')}"></label>
+      <label class="f">Radio / canale<input name="radio" value="${esc(a.radio)}"></label>
+    </div>
+    <div class="two">
+      <label class="f">Turno dalle<input type="time" name="inizio" value="${esc(a.inizio)}"></label>
+      <label class="f">alle<input type="time" name="fine" value="${esc(a.fine)}"></label>
+    </div>
+    <label class="f">Note<textarea name="note">${esc(a.note)}</textarea></label>
+    <div class="acts">
+      ${nuovo?'':'<button type="button" class="btn ghost" id="rmA" style="margin-right:auto">Togli dal servizio</button>'}
+      <button type="button" class="btn sec" data-close>Annulla</button>
+      <button class="btn">${nuovo?'Aggiungi':'Salva'}</button>
+    </div></form>`,(d,close)=>{
+    const f=d.querySelector('#fa');
+    f.post.value=selPost;
+    const updP=()=>{d.querySelector('#npw').style.display=f.post.value==='__new'?'':'none';};
+    f.post.onchange=()=>{updP();if(f.post.value==='__new')f.npost.focus();};updP();
+    if(nuovo){
+      f.vol.onchange=()=>{
+        d.querySelector('#nv').style.display=f.vol.value==='__new'?'':'none';
+        const v=getVol(f.vol.value);
+        if(v){if(v.mansione)f.mansione.value=v.mansione;f.tel.value=v.telefono||'';f.radio.value=v.radio||'';}
+      };
+    }
+    const rm=d.querySelector('#rmA');
+    if(rm)rm.onclick=async()=>{close();if(await ask('Togliere '+vNome(v0)+' da questo servizio?','Togli')){s.assegnazioni=s.assegnazioni.filter(x=>x!==a);s.interventi.forEach(i=>i.vol=i.vol.filter(x=>x!==a.id));aggiorna();}};
+    f.onsubmit=e=>{
+      e.preventDefault();
+      let post=null,smz=null;const pv=f.post.value;
+      if(pv==='__new'){const n=f.npost.value.trim();if(!n){toast('Scrivi il nome della nuova postazione');return;}post=trovaOCreaPost(s,n);}
+      else if(pv.startsWith('n:'))post=trovaOCreaPost(s,pv.slice(2));
+      else if(pv.startsWith('p:'))post=postOf(s,pv.slice(2));
+      else if(pv.startsWith('m:'))smz=smOf(s,pv.slice(2));
+      let v;
+      if(nuovo){
+        if(f.vol.value==='__new'){
+          const n=f.nome.value.trim(),c=f.cognome.value.trim();
+          if(!n||!c){toast('Scrivi nome e cognome');return;}
+          v={id:uid(),nome:n,cognome:c,telefono:'',radio:f.radio.value.trim(),mansione:f.mansione.value};S.volontari.push(v);
+        }else{v=getVol(f.vol.value);if(!v){toast('Scegli un volontario');return;}}
+        a.volId=v.id;
+      }else v=v0;
+      if(v)v.telefono=f.tel.value.trim();
+      Object.assign(a,{postId:post?post.id:null,mezzoSvcId:smz?smz.id:null,mansione:f.mansione.value,squadraId:f.sq.value||null,radio:f.radio.value.trim(),inizio:f.inizio.value,fine:f.fine.value,note:f.note.value.trim()});
+      if(nuovo)s.assegnazioni.push(a);
+      close();aggiorna();
+      if(!map)return;
+      const lu=luogoDi(s,a);
+      if(!lu.pos)setPlacing(lu.k==='man'?{k:'ass',id:a.id}:{k:lu.k,id:lu.o.id});
+      else if(nuovo)toast('✅ '+vNome(v)+' → '+lu.l);
+    };
+  });
+}
+/* ---- interventi ---- */
+function popupInterv(s,i){
+  return `<div class="pop"><b>⚠️ Intervento n.${i.n}</b> <span class="mut small">${esc(i.ora)}</span>
+  <div>${esc(i.descr||'')}</div><div class="small"><b>${esc(i.esito)}</b></div>
+  ${i.vol.length?`<div class="small">👥 ${i.vol.map(id=>{const a=assOf(s,id);return a?esc(vNome(getVol(a.volId))):''}).filter(Boolean).join(', ')}</div>`:''}
+  ${i.mezzo&&smOf(s,i.mezzo)?`<div class="small">${esc(mzNome(getMezzo(smOf(s,i.mezzo).mezzoId)))}</div>`:''}
+  ${i.note?`<div class="small mut">${esc(i.note)}</div>`:''}
+  <div style="margin-top:6px"><button class="btn sm" onclick="intervDialog(svc().interventi.find(x=>x.id==='${i.id}'))">Aggiorna</button></div></div>`;
+}
+function intervDialog(i,presetPos){
+  const s=svc(),nuovo=!i;if(map)map.closePopup();
+  i=i||{id:uid(),n:(s.interventi.reduce((m,x)=>Math.max(m,x.n),0)+1),ora:ora(),descr:'',vol:[],mezzo:'',esito:'In corso',note:'',pos:presetPos||null};
+  const eraAperto=i.esito==='In corso';
+  dialog(`<h2>⚠️ Intervento n.${i.n}</h2><form id="fi">
+    <div class="two"><label class="f">Ora<input type="time" name="ora" value="${esc(i.ora)}"></label>
+    <label class="f">Esito<select name="esito">${ESITI.map(x=>`<option ${x===i.esito?'selected':''}>${x}</option>`).join('')}</select></label></div>
+    <label class="f">Cosa è successo<input name="descr" value="${esc(i.descr)}" placeholder="es. malore spettatore, caduta, trauma"></label>
+    <label class="f">Volontari intervenuti</label>
+    <div style="max-height:200px;overflow:auto;margin-bottom:8px">${s.assegnazioni.length?sortVolAss(s).map(a=>`<label class="chk"><input type="checkbox" value="${a.id}" ${i.vol.includes(a.id)?'checked':''}><span class="grow">${esc(vNome(getVol(a.volId)))} <span class="small mut">${esc(luogoDi(s,a).l)}</span></span></label>`).join(''):'<p class="small mut">Nessun volontario nel servizio.</p>'}</div>
+    ${s.mezzi.length?`<label class="f">Mezzo<select name="mezzo"><option value="">—</option>${s.mezzi.map(m=>`<option value="${m.id}" ${m.id===i.mezzo?'selected':''}>${esc(mzNome(getMezzo(m.mezzoId)))}</option>`).join('')}</select></label>`:''}
+    <label class="f">Note<textarea name="note">${esc(i.note)}</textarea></label>
+    <label class="chk" id="stw"><input type="checkbox" name="setst" checked> Aggiorna lo stato dei volontari (in intervento / di nuovo in postazione)</label>
+    <div class="acts">${nuovo?'':'<button type="button" class="btn ghost" id="delI" style="margin-right:auto">Elimina</button><button type="button" class="btn sec" id="movI">Sposta</button>'}<button type="button" class="btn sec" data-close>Annulla</button><button class="btn">Salva</button></div></form>`,(d,close)=>{
+    const f=d.querySelector('#fi');
+    const del=d.querySelector('#delI');if(del)del.onclick=async()=>{close();if(await ask('Eliminare l’intervento n.'+i.n+'?','Elimina')){s.interventi=s.interventi.filter(x=>x!==i);aggiorna();}};
+    const mov=d.querySelector('#movI');if(mov)mov.onclick=()=>{close();setPlacing({k:'interv',id:i.id});};
+    f.onsubmit=e=>{e.preventDefault();
+      const vol=[...f.querySelectorAll('.chk input[type=checkbox][value]:checked')].map(c=>c.value);
+      Object.assign(i,{ora:f.ora.value,esito:f.esito.value,descr:f.descr.value.trim(),vol,mezzo:f.mezzo?f.mezzo.value:'',note:f.note.value.trim()});
+      const aperto=i.esito==='In corso';
+      if(nuovo){s.interventi.push(i);logD(s,`⚠️ Intervento n.${i.n} aperto${i.descr?': '+i.descr:''}`);}
+      if(!nuovo&&eraAperto&&!aperto)logD(s,`✔️ Intervento n.${i.n} chiuso: ${i.esito}`);
+      if(f.setst.checked){
+        vol.forEach(id=>{const a=assOf(s,id);if(!a)return;
+          if(aperto)cambiaStato(s,a,'interv',true);
+          else if(a.stato==='interv'&&!s.interventi.some(x=>x!==i&&x.esito==='In corso'&&x.vol.includes(id)))cambiaStato(s,a,'post',true);
+        });
+      }
+      close();aggiorna();
+      if(!i.pos&&map)setPlacing({k:'interv',id:i.id});
+    };
+  });
+}
+window.intervDialog=intervDialog;
+
+/* ================= GPS ================= */
+function toggleGps(){if(gps)stopGps();else startGps();}
+function startGps(){
+  if(!navigator.geolocation){toast('Posizione non disponibile su questo dispositivo');return;}
+  gps={first:true,marker:null,circle:null};
+  const b=$('#tGps');if(b)b.classList.add('on');
+  toast('Cerco la tua posizione…');
+  gps.watch=navigator.geolocation.watchPosition(p=>{
+    if(!gps||!map)return;const ll=[p.coords.latitude,p.coords.longitude];
+    if(!gps.marker){gps.circle=L.circle(ll,{radius:p.coords.accuracy,color:'#2563eb',weight:1,fillOpacity:.1}).addTo(map);gps.marker=L.circleMarker(ll,{radius:8,color:'#fff',weight:3,fillColor:'#2563eb',fillOpacity:1}).addTo(map).bindTooltip('Tu sei qui');}
+    else{gps.marker.setLatLng(ll);gps.circle.setLatLng(ll).setRadius(p.coords.accuracy);}
+    if(gps.first){gps.first=false;map.setView(ll,Math.max(map.getZoom(),17));}
+  },err=>{toast(err.code===1?'Permesso posizione negato: attivalo nelle impostazioni del telefono':'Posizione non trovata',3500);stopGps();},{enableHighAccuracy:true,maximumAge:5000});
+}
+function stopGps(){
+  if(!gps)return;try{navigator.geolocation.clearWatch(gps.watch);}catch(e){}
+  if(gps.marker)gps.marker.remove();if(gps.circle)gps.circle.remove();gps=null;
+  const b=$('#tGps');if(b)b.classList.remove('on');
+}
+
+/* ================= CONDIVIDI ================= */
+function menuCondividi(){
+  sheet('Condividi o stampa',[
+    {t:'🖼 Immagine della mappa (WhatsApp…)',fn:condividiImmagine},
+    {t:'📝 Elenco come messaggio (WhatsApp…)',fn:condividiTesto},
+    {t:'🖨 Stampa / PDF completo',fn:stampa}
+  ],'<p class="small mut" style="margin-top:-6px">L’immagine e il messaggio si possono mandare ai volontari, così ognuno vede dov’è la sua postazione.</p>');
+}
+function testoServizio(s){
+  const r=[`*${s.nome}*`,`${s.tipo}${s.data?' · '+fmtData(s.data):''}${s.luogo?' · '+s.luogo:''}`,''];
+  const riga=a=>{const v=getVol(a.volId);return`• ${vNome(v)}${a.mansione?' ('+a.mansione+')':''}${a.radio?' 📻 '+a.radio:''}${a.inizio||a.fine?' 🕒 '+(a.inizio||'?')+'-'+(a.fine||'?'):''}`;};
+  s.postazioni.forEach(p=>{const l=s.assegnazioni.filter(a=>a.postId===p.id);if(l.length){r.push(`📌 *${p.nome}*`);l.forEach(a=>r.push(riga(a)));r.push('');}});
+  s.mezzi.forEach(sm=>{const mz=getMezzo(sm.mezzoId),l=s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id);if(l.length){r.push(`${mzEmoji(mz)} *${mzNome(mz)}*`);l.forEach(a=>r.push(riga(a)));r.push('');}});
+  const man=s.assegnazioni.filter(a=>luogoDi(s,a).k==='man');if(man.length){r.push('✋ *Altri*');man.forEach(a=>r.push(riga(a)));r.push('');}
+  if(s.punti.length){r.push('*Punti utili*');s.punti.forEach(p=>r.push(`${TIPI_PUNTO[p.tipo][1]} ${p.nome||TIPI_PUNTO[p.tipo][0]}`));}
+  return r.join('\n').trim();
+}
+async function condividiTesto(){
+  const s=svc(),t=testoServizio(s);
+  try{if(navigator.share){await navigator.share({text:t});return;}}catch(e){if(e.name==='AbortError')return;}
+  try{await navigator.clipboard.writeText(t);toast('Testo copiato: incollalo in WhatsApp');}catch(e){}
+  window.open('https://wa.me/?text='+encodeURIComponent(t),'_blank');
+}
+async function condividiImmagine(){
+  if(!map){toast('Mappa non disponibile');return;}
+  const s=svc();setPlacing(null);
+  toast('Preparo l’immagine…',1800);
+  let c;
+  try{c=await disegnaImmagine(s,true);await new Promise((res,rej)=>{try{c.toBlob(b=>b?res():rej(),'image/png');}catch(e){rej(e);}});}
+  catch(e){c=await disegnaImmagine(s,false);}
+  c.toBlob(async blob=>{
+    const nome=(s.nome||'servizio').replace(/[^\w\- ]+/g,'').trim().replace(/\s+/g,'-')+'.png';
+    const file=new File([blob],nome,{type:'image/png'});
+    try{if(navigator.canShare&&navigator.canShare({files:[file]})){await navigator.share({files:[file],title:s.nome});return;}}catch(e){if(e.name==='AbortError')return;}
+    scaricaFile(blob,nome);toast('Immagine salvata nei download');
+  },'image/png');
+}
+function caricaImg(src,cors){return new Promise(res=>{const i=new Image();if(cors)i.crossOrigin='anonymous';const t=setTimeout(()=>res(null),8000);i.onload=()=>{clearTimeout(t);res(i);};i.onerror=()=>{clearTimeout(t);res(null);};i.src=src;});}
+async function disegnaImmagine(s,conSfondo){
+  fitAll();await new Promise(r=>setTimeout(r,500));
+  const size=map.getSize(),K=2,W=Math.max(size.x,640),HEAD=74;
+  // elenco sotto la mappa
+  const righe=[];
+  s.postazioni.forEach(p=>{const l=s.assegnazioni.filter(a=>a.postId===p.id);if(l.length)righe.push({t:'📌 '+p.nome,b:1},...l.map(a=>({t:'   '+vNome(getVol(a.volId))+(a.mansione?' — '+a.mansione:'')+(a.radio?' · 📻 '+a.radio:''),c:colOf(s,a)})));});
+  s.mezzi.forEach(sm=>{const mz=getMezzo(sm.mezzoId),l=s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id);if(l.length)righe.push({t:mzEmoji(mz)+' '+mzNome(mz),b:1},...l.map(a=>({t:'   '+vNome(getVol(a.volId))+(a.mansione?' — '+a.mansione:''),c:colOf(s,a)})));});
+  const man=s.assegnazioni.filter(a=>luogoDi(s,a).k==='man');if(man.length)righe.push({t:'✋ Altri',b:1},...man.map(a=>({t:'   '+vNome(getVol(a.volId))+(a.mansione?' — '+a.mansione:''),c:colOf(s,a)})));
+  const LH=22,LIST=righe.length?righe.length*LH+24:0;
+  const c=document.createElement('canvas');c.width=W*K;c.height=(HEAD+size.y+LIST)*K;
+  const x=c.getContext('2d');x.scale(K,K);
+  x.fillStyle='#fff';x.fillRect(0,0,W,HEAD+size.y+LIST);
+  x.fillStyle='#b5121b';x.fillRect(0,0,W,HEAD);
+  x.fillStyle='#fff';x.font='bold 20px system-ui,sans-serif';x.fillText(s.nome,14,30);
+  x.font='14px system-ui,sans-serif';x.fillText(`${s.tipo}${s.data?' · '+fmtData(s.data):''}${s.luogo?' · '+s.luogo:''}`,14,52);
+  let lx=14;x.font='12px system-ui,sans-serif';
+  s.squadre.forEach(q=>{x.fillStyle=q.colore;x.beginPath();x.arc(lx+6,66,5,0,7);x.fill();x.fillStyle='#fff';x.fillText(q.nome,lx+14,70);lx+=x.measureText(q.nome).width+30;});
+  const ox=(W-size.x)/2,oy=HEAD;
+  x.save();x.beginPath();x.rect(ox,oy,size.x,size.y);x.clip();
+  x.fillStyle='#e5e7eb';x.fillRect(ox,oy,size.x,size.y);
+  if(s.mappaTipo==='planimetria'&&s.planimetria){
+    const im=await caricaImg(s.planimetria.src);
+    const tl=map.latLngToContainerPoint([s.planimetria.h,0]),br=map.latLngToContainerPoint([0,s.planimetria.w]);
+    if(im)x.drawImage(im,ox+tl.x,oy+tl.y,br.x-tl.x,br.y-tl.y);
+  }else if(conSfondo){
+    const z=Math.round(map.getZoom()),pb=map.getPixelBounds(),tpl=s.base==='osm'?'https://tile.openstreetmap.org/{z}/{x}/{y}.png':'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}';
+    const jobs=[];
+    for(let tx=Math.floor(pb.min.x/256);tx<=Math.floor(pb.max.x/256);tx++)for(let ty=Math.floor(pb.min.y/256);ty<=Math.floor(pb.max.y/256);ty++){
+      const u=tpl.replace('{z}',z).replace('{x}',tx).replace('{y}',ty);
+      jobs.push(caricaImg(u,true).then(im=>{if(im)x.drawImage(im,ox+tx*256-pb.min.x,oy+ty*256-pb.min.y,256,256);}));
+    }
+    await Promise.all(jobs);
+  }
+  const P=ll=>{const p=map.latLngToContainerPoint(ll);return[ox+p.x,oy+p.y];};
+  const etichetta=(t,cx,cy,bold)=>{x.font=(bold?'bold ':'')+'11px system-ui,sans-serif';const w=x.measureText(t).width+10;x.fillStyle='rgba(255,255,255,.95)';x.fillRect(cx-w/2,cy,w,16);x.fillStyle='#111';x.fillText(t,cx-w/2+5,cy+12);};
+  const cerchio=(cx,cy,r,col,txt)=>{x.beginPath();x.arc(cx,cy,r,0,7);x.fillStyle=col;x.fill();x.lineWidth=2;x.strokeStyle='#fff';x.stroke();if(txt){x.fillStyle='#fff';x.font='bold '+(r>12?12:9)+'px system-ui,sans-serif';const w=x.measureText(txt).width;x.fillText(txt,cx-w/2,cy+(r>12?4:3));}};
+  s.disegni.forEach(g=>{const pts=(g.pts||[]).map(P);if(pts.length<2)return;x.beginPath();x.moveTo(...pts[0]);pts.slice(1).forEach(p=>x.lineTo(...p));
+    x.strokeStyle=g.colore;x.lineWidth=g.tipo==='zona'?3:5;x.setLineDash(g.tratt?[10,8]:[]);
+    if(g.tipo==='zona'){x.closePath();x.globalAlpha=.15;x.fillStyle=g.colore;x.fill();x.globalAlpha=1;}x.stroke();x.setLineDash([]);
+    const cx=pts.reduce((a,p)=>a+p[0],0)/pts.length,cy=pts.reduce((a,p)=>a+p[1],0)/pts.length;etichetta(g.nome,cx,cy-8,true);});
+  s.punti.forEach(p=>{if(!p.pos)return;const[cx,cy]=P(p.pos);x.beginPath();x.arc(cx,cy,16,0,7);x.fillStyle='#fff';x.fill();x.lineWidth=2;x.strokeStyle='#111';x.stroke();x.font='17px system-ui';x.fillStyle='#111';const e=TIPI_PUNTO[p.tipo][1];x.fillText(e,cx-x.measureText(e).width/2,cy+6);etichetta(p.nome||TIPI_PUNTO[p.tipo][0],cx,cy+18);});
+  s.assegnazioni.forEach(a=>{if(luogoDi(s,a).k!=='man'||!a.pos)return;const[cx,cy]=P(a.pos);cerchio(cx,cy,15,colOf(s,a),iniz(getVol(a.volId)));etichetta(vNome(getVol(a.volId)),cx,cy+17);});
+  const box=(pos,titolo,lista,bord)=>{
+    const[cx,cy]=P(pos);x.font='bold 12px system-ui,sans-serif';
+    const w=Math.max(x.measureText(titolo).width+16,lista.length*24+12),h=lista.length?44:24,bx=cx-w/2,by=cy-12-h;
+    x.fillStyle='#fff';x.strokeStyle=bord;x.lineWidth=2;x.beginPath();x.rect(bx,by,w,h);x.fill();x.stroke();
+    x.beginPath();x.moveTo(cx-6,cy-12);x.lineTo(cx+6,cy-12);x.lineTo(cx,cy-4);x.closePath();x.fillStyle=bord;x.fill();
+    x.beginPath();x.arc(cx,cy,5,0,7);x.fillStyle='#111';x.fill();x.strokeStyle='#fff';x.stroke();
+    x.fillStyle='#111';x.font='bold 12px system-ui,sans-serif';x.fillText(titolo,cx-x.measureText(titolo).width/2,by+16);
+    lista.forEach((a,k)=>cerchio(cx-(lista.length*24)/2+12+k*24,by+32,10,colOf(s,a),iniz(getVol(a.volId))));
+  };
+  s.postazioni.forEach(p=>{if(p.pos)box(p.pos,'📌 '+p.nome,s.assegnazioni.filter(a=>a.postId===p.id),'#111');});
+  s.mezzi.forEach(sm=>{if(sm.pos){const mz=getMezzo(sm.mezzoId);box(sm.pos,mzEmoji(mz)+' '+mzNome(mz),s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id),'#1d4ed8');}});
+  s.interventi.forEach(i=>{if(!i.pos)return;const[cx,cy]=P(i.pos);cerchio(cx,cy,13,i.esito==='In corso'?'#f97316':'#9ca3af',String(i.n));});
+  x.restore();
+  if(!conSfondo&&s.mappaTipo==='reale'){x.fillStyle='#6b7280';x.font='12px system-ui';x.fillText('(sfondo della mappa non disponibile)',ox+8,oy+size.y-8);}
+  let y=HEAD+size.y+20;
+  righe.forEach(r=>{x.font=(r.b?'bold 14px':'13px')+' system-ui,sans-serif';if(r.c){x.fillStyle=r.c;x.beginPath();x.arc(26,y-5,5,0,7);x.fill();}x.fillStyle='#111';x.fillText(r.t.trim(),r.c?36:14,y);y+=LH;});
+  return c;
+}
+
+/* ================= STAMPA / PDF ================= */
+function stampa(){
+  const s=svc();if(!s)return;
+  setPlacing(null);
+  $('#printHead').innerHTML=`<h1>${esc(s.nome)}</h1><p>${esc(s.tipo)}${s.data?' · '+fmtData(s.data):''}${s.luogo?' · '+esc(s.luogo):''} · ${s.assegnazioni.length} volontari · ${s.postazioni.length} postazioni · ${s.mezzi.length} mezzi</p>
+  <div class="legend">${s.squadre.map(q=>`<span><span class="dot" style="background:${q.colore}"></span>${esc(q.nome)}</span>`).join('')}</div>`;
+  const gruppi=s.squadre.map(q=>({q,l:s.assegnazioni.filter(a=>a.squadraId===q.id)}));
+  const senza=s.assegnazioni.filter(a=>!sqOf(s,a.squadraId));if(senza.length)gruppi.push({q:{nome:'Senza squadra',colore:'#6b7280'},l:senza});
+  $('#printTable').innerHTML=`<h3>Volontari</h3><table><thead><tr><th>Volontario</th><th>Mansione</th><th>Postazione / mezzo</th><th>Telefono</th><th>Radio</th><th>Turno</th><th>Note</th></tr></thead><tbody>
+  ${gruppi.filter(g=>g.l.length).map(g=>{const capo=g.q.capo&&assOf(s,g.q.capo);return`<tr class="ptsq"><td colspan="7"><span class="dot" style="background:${g.q.colore};width:10px;height:10px"></span> ${esc(g.q.nome)}${capo?' — capo squadra: '+esc(vNome(getVol(capo.volId))):''}</td></tr>`+
+    g.l.map(a=>{const v=getVol(a.volId),lu=luogoDi(s,a);return`<tr><td>${esc(vNome(v))}</td><td>${esc(a.mansione)}</td><td>${esc(lu.l)}${lu.pos?'':' (non sulla mappa)'}</td><td>${esc(v?v.telefono:'')}</td><td>${esc(a.radio)}</td><td>${esc(a.inizio)}${a.inizio||a.fine?'–':''}${esc(a.fine)}</td><td>${esc(a.note)}</td></tr>`}).join('')}).join('')}
+  </tbody></table>
+  ${s.mezzi.length?`<h3>Mezzi</h3><table><thead><tr><th>Mezzo</th><th>Tipo</th><th>Targa</th><th>Equipaggio</th></tr></thead><tbody>${s.mezzi.map(sm=>{const mz=getMezzo(sm.mezzoId);return`<tr><td>${esc(mzNome(mz))}</td><td>${esc(mz?mz.tipo:'')}</td><td>${esc(mz?mz.targa:'')}</td><td>${s.assegnazioni.filter(a=>a.mezzoSvcId===sm.id).map(a=>esc(vNome(getVol(a.volId)))+(a.mansione?' ('+esc(a.mansione)+')':'')).join(', ')}</td></tr>`}).join('')}</tbody></table>`:''}
+  ${s.punti.length?`<h3>Punti fissi</h3><table><tbody>${s.punti.map(p=>`<tr><td>${TIPI_PUNTO[p.tipo][1]} ${esc(p.nome||TIPI_PUNTO[p.tipo][0])}</td><td>${esc(TIPI_PUNTO[p.tipo][0])}</td><td>${esc(p.note)}</td></tr>`).join('')}</tbody></table>`:''}
+  ${s.interventi.length?`<h3>Interventi</h3><table><thead><tr><th>N.</th><th>Ora</th><th>Descrizione</th><th>Volontari</th><th>Esito</th><th>Note</th></tr></thead><tbody>${s.interventi.slice().sort((a,b)=>a.n-b.n).map(i=>`<tr><td>${i.n}</td><td>${esc(i.ora)}</td><td>${esc(i.descr)}</td><td>${i.vol.map(id=>{const a=assOf(s,id);return a?esc(vNome(getVol(a.volId))):''}).filter(Boolean).join(', ')}</td><td>${esc(i.esito)}</td><td>${esc(i.note)}</td></tr>`).join('')}</tbody></table>`:''}
+  <p style="font-size:10px;color:#666">Stampato il ${new Date().toLocaleString('it-IT')}</p>`;
+  document.body.classList.remove('hide-labels');
+  document.body.classList.add('printing');
+  if(map){map.invalidateSize();fitAll();}
+  toast('Preparo la stampa… scegli “Salva come PDF” per avere il file',2000);
+  setTimeout(()=>{
+    const fine=()=>{document.body.classList.remove('printing');if(map)map.invalidateSize();window.removeEventListener('afterprint',fine);};
+    window.addEventListener('afterprint',fine);
+    try{window.print();}catch(e){toast('Stampa non disponibile qui');}
+    setTimeout(()=>{if(!matchMedia('print').matches)fine();},1500);
+  },1300);
+}
+
+/* ================= MAPPA OFFLINE ================= */
+function tile(lat,lng,z){const n=2**z,x=Math.floor((lng+180)/360*n),r=lat*Math.PI/180,y=Math.floor((1-Math.log(Math.tan(r)+1/Math.cos(r))/Math.PI)/2*n);return[Math.max(0,Math.min(n-1,x)),Math.max(0,Math.min(n-1,y))];}
+async function scaricaOffline(){
+  if(!map)return;
+  if(!('caches' in window)||!navigator.serviceWorker||!navigator.serviceWorker.controller){toast('Funziona solo con l’app aperta dal suo indirizzo internet',3500);return;}
+  if(!navigator.onLine){toast('Serve internet per scaricare la mappa');return;}
+  const b=map.getBounds(),z0=Math.max(map.getZoom(),13),z1=Math.min(z0+3,19);
+  const urls=[];
+  for(let z=z0;z<=z1;z++){
+    const [x1,y1]=tile(b.getNorth(),b.getWest(),z),[x2,y2]=tile(b.getSouth(),b.getEast(),z);
+    for(let x=x1;x<=x2;x++)for(let y=y1;y<=y2;y++){
+      urls.push(`https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/${z}/${y}/${x}`);
+      urls.push(`https://tile.openstreetmap.org/${z}/${x}/${y}.png`);
+    }
+  }
+  if(urls.length>1200){toast('Zona troppo grande: avvicinati di più sulla mappa e riprova',3500);return;}
+  if(!await ask(`Scaricare la zona visibile per usarla senza internet? (${urls.length} pezzi di mappa, satellite + stradale)`,'Scarica',false))return;
+  const cache=await caches.open('tiles-v1');let done=0,err=0;
+  const bar=document.createElement('div');bar.className='toast';document.body.appendChild(bar);
+  const q=urls.slice();
+  async function worker(){while(q.length){const u=q.shift();try{const h=await cache.match(u);if(!h||h.type==='opaque'){let r;try{r=await fetch(u,{mode:'cors'});}catch(e){r=await fetch(u,{mode:'no-cors'});}await cache.put(u,r);}}catch(e){err++;}done++;bar.textContent=`Scarico mappa… ${Math.round(done/urls.length*100)}%`;}}
+  await Promise.all([1,2,3,4].map(worker));
+  bar.remove();toast(err?`Mappa scaricata (${err} pezzi non riusciti)`:'✅ Mappa della zona salvata per l’uso offline',3500);
+}
+
+/* ================= AVVIO ================= */
+function netState(){document.body.classList.toggle('is-offline',!navigator.onLine);}
+addEventListener('online',netState);addEventListener('offline',netState);netState();
+if('serviceWorker' in navigator&&location.protocol.startsWith('http')){navigator.serviceWorker.register('sw.js').catch(()=>{});}
+load().then(()=>setView('servizi'));
+</script>
+</body>
+</html>
